@@ -1,0 +1,27 @@
+{
+  "name": "coresystem",
+  "version": "1.0.0",
+  "description": "Démonstrateur de plateforme universitaire pour le Mali",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.6.1",
+    "ejs": "^5.0.1",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.19.0",
+    "multer": "^1.4.5-lts.2",
+    "mysql2": "^3.15.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prisma": "^6.19.3"
+  }
+}
