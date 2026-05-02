@@ -1,0 +1,440 @@
+﻿<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Preview import notes',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safePreview = typeof preview !== 'undefined' && preview ? preview : {};
+    var safeClassContext = typeof classContext !== 'undefined' && classContext ? classContext : safePreview.classContext || null;
+    var summary = safePreview.summary || {};
+    var validRows = Array.isArray(safePreview.validRows) ? safePreview.validRows : [];
+    var invalidRows = Array.isArray(safePreview.invalidRows) ? safePreview.invalidRows : [];
+
+    var totalRows = Number(summary.totalRows || validRows.length + invalidRows.length || 0);
+    var validCount = Number(summary.validRows || validRows.length || 0);
+    var invalidCount = Number(summary.invalidRows || invalidRows.length || 0);
+    var createCount = Number(summary.createCount || 0);
+    var updateCount = Number(summary.updateCount || 0);
+    var warningCount = Number(summary.warningCount || 0);
+    var hasValidRows = validRows.length > 0;
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function displayValue(row, key, fallback) {
+        if (row && row.display && typeof row.display[key] !== 'undefined' && row.display[key] !== null && row.display[key] !== '') {
+            return row.display[key];
+        }
+
+        if (row && typeof row[key] !== 'undefined' && row[key] !== null && row[key] !== '') {
+            return row[key];
+        }
+
+        return fallback || '-';
+    }
+
+    function actionLabel(action) {
+        if (action === 'create') return 'Creation';
+        if (action === 'update') return 'Mise a jour';
+        return 'Action';
+    }
+
+    function actionBadge(action) {
+        if (action === 'create') return 'badge-success';
+        if (action === 'update') return 'badge-info';
+        return 'badge-neutral';
+    }
+
+    function hasMessages(messages) {
+        return Array.isArray(messages) && messages.length > 0;
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="/admin/grades/import<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+        &larr; Modifier l'import
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Notes</span>
+
+        <h1>Preview import notes</h1>
+
+        <p>
+            Verifiez les lignes valides, les erreurs et les avertissements avant confirmation.
+            Aucune note n'est encore inseree dans la base.
+        </p>
+
+        <% if (safeClassContext) { %>
+            <div class="cs-context-pill-row">
+                <span class="cs-context-pill">
+                    Classe : <strong><%= safeText(safeClassContext.nom, '-') %></strong>
+                </span>
+
+                <span class="cs-context-pill">
+                    Annee : <strong><%= safeText(safeClassContext.academicYear, '-') %></strong>
+                </span>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/grades/import<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+            Modifier l'import
+        </a>
+
+        <a class="btn btn-secondary" href="/admin/grades<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+            Retour notes
+        </a>
+    </div>
+</section>
+
+<section class="cs-import-steps">
+    <article class="cs-import-step is-done">
+        <span>1</span>
+        <div>
+            <strong>Classe</strong>
+            <small>Selectionnee</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step is-done">
+        <span>2</span>
+        <div>
+            <strong>Upload</strong>
+            <small>Fichier recu</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step is-active">
+        <span>3</span>
+        <div>
+            <strong>Preview</strong>
+            <small>Verification</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step">
+        <span>4</span>
+        <div>
+            <strong>Rapport</strong>
+            <small>Resultat final</small>
+        </div>
+    </article>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">TL</div>
+        <div>
+            <strong><%= totalRows %></strong>
+            <span>Lignes analysees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= validCount %></strong>
+            <span>Lignes valides</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">ER</div>
+        <div>
+            <strong><%= invalidCount %></strong>
+            <span>Lignes invalides</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">AV</div>
+        <div>
+            <strong><%= warningCount %></strong>
+            <span>Avertissements</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-import-preview-summary">
+    <article class="cs-import-summary-card">
+        <span class="badge badge-success">Creations prevues</span>
+        <strong><%= createCount %></strong>
+        <p>Nouvelles notes qui seront creees en brouillon.</p>
+    </article>
+
+    <article class="cs-import-summary-card">
+        <span class="badge badge-info">Mises a jour prevues</span>
+        <strong><%= updateCount %></strong>
+        <p>Notes existantes qui seront remplacees et remises en brouillon.</p>
+    </article>
+
+    <article class="cs-import-summary-card">
+        <span class="badge badge-warning">Avertissements</span>
+        <strong><%= warningCount %></strong>
+        <p>Points a verifier avant confirmation.</p>
+    </article>
+
+    <article class="cs-import-summary-card">
+        <% if (hasValidRows) { %>
+            <span class="badge badge-success">Confirmable</span>
+            <strong>Oui</strong>
+            <p>CoreSystem importera uniquement les lignes valides.</p>
+        <% } else { %>
+            <span class="badge badge-danger">Bloque</span>
+            <strong>Non</strong>
+            <p>Aucune ligne valide n'est disponible.</p>
+        <% } %>
+    </article>
+</section>
+
+<section class="cs-import-confirm-panel">
+    <div>
+        <h2>Confirmation</h2>
+
+        <% if (hasValidRows) { %>
+            <p>
+                Les notes valides seront creees ou mises a jour en brouillon.
+                Les lignes invalides resteront exclues.
+            </p>
+        <% } else { %>
+            <p>
+                Corrigez votre fichier : aucune ligne valide ne peut etre importee.
+            </p>
+        <% } %>
+    </div>
+
+    <div class="cs-import-confirm-actions">
+        <a class="btn btn-secondary" href="/admin/grades/import<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+            Corriger le fichier
+        </a>
+
+        <% if (hasValidRows) { %>
+            <form method="POST" action="/admin/grades/import/confirm">
+                <%- include('../../partials/csrf') %>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                    data-confirm="Confirmer l import des notes valides ?"
+                >
+                    Confirmer l'import
+                </button>
+            </form>
+        <% } else { %>
+            <button class="btn btn-primary" type="button" disabled>
+                Confirmer l'import
+            </button>
+        <% } %>
+    </div>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Lignes valides</h2>
+            <p>
+                <%= validRows.length %> ligne<%= validRows.length > 1 ? 's' : '' %>
+                prete<%= validRows.length > 1 ? 's' : '' %> a etre importee<%= validRows.length > 1 ? 's' : '' %>.
+            </p>
+        </div>
+
+        <span class="cs-table-count"><%= validRows.length %></span>
+    </div>
+
+    <% if (!validRows.length) { %>
+        <div class="empty-state compact" style="margin: 18px;">
+            Aucune ligne valide trouvee.
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-grade-import-table">
+                <thead>
+                    <tr>
+                        <th>Ligne</th>
+                        <th>Etudiant</th>
+                        <th>Cours</th>
+                        <th>Evaluation</th>
+                        <th>Note</th>
+                        <th>Action</th>
+                        <th>Avertissements</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% validRows.forEach(function(row) { %>
+                        <tr>
+                            <td>
+                                <span class="cs-row-number">
+                                    #<%= safeText(row.rowNumber, '-') %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'studentNom', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    Matricule : <%= displayValue(row, 'matricule', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'courseCode', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= displayValue(row, 'courseNom', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'typeEvaluation', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-grade-value <%= Number(displayValue(row, 'valeur', 0)) >= 10 ? 'is-good' : 'is-low' %>">
+                                    <%= displayValue(row, 'valeur', '-') %>
+                                    <span>/20</span>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= actionBadge(row.action) %>">
+                                    <%= actionLabel(row.action) %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.warnings)) { %>
+                                    <ul class="cs-import-message-list">
+                                        <% row.warnings.forEach(function(warning) { %>
+                                            <li><%= warning %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Lignes invalides</h2>
+            <p>Ces lignes ne seront pas importees.</p>
+        </div>
+
+        <span class="cs-table-count"><%= invalidRows.length %></span>
+    </div>
+
+    <% if (!invalidRows.length) { %>
+        <div class="empty-state compact" style="margin: 18px;">
+            Aucune erreur bloquante.
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-grade-import-table">
+                <thead>
+                    <tr>
+                        <th>Ligne</th>
+                        <th>Etudiant</th>
+                        <th>Cours</th>
+                        <th>Evaluation</th>
+                        <th>Note</th>
+                        <th>Erreurs</th>
+                        <th>Avertissements</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% invalidRows.forEach(function(row) { %>
+                        <tr>
+                            <td>
+                                <span class="cs-row-number is-danger">
+                                    #<%= safeText(row.rowNumber, '-') %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'studentNom', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    Matricule : <%= displayValue(row, 'matricule', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'courseCode', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= displayValue(row, 'courseNom', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'typeEvaluation', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'valeur', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.errors)) { %>
+                                    <ul class="cs-import-message-list is-danger">
+                                        <% row.errors.forEach(function(errorMessage) { %>
+                                            <li><%= errorMessage %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Erreur non precisee</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.warnings)) { %>
+                                    <ul class="cs-import-message-list">
+                                        <% row.warnings.forEach(function(warning) { %>
+                                            <li><%= warning %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

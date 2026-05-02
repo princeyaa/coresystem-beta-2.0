@@ -1,0 +1,501 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle
+    : 'Prévisualisation import étudiants' , session: typeof session !=='undefined' ? session : null }) %>
+
+    <% var safePreview=typeof preview !=='undefined' && preview ? preview : {}; var summary=safePreview.summary || {};
+        var validRows=Array.isArray(safePreview.validRows) ? safePreview.validRows : []; var
+        invalidRows=Array.isArray(safePreview.invalidRows) ? safePreview.invalidRows : []; var
+        hasValidRows=validRows.length> 0;
+        var totalRows = Number(summary.totalRows || 0);
+        var validCount = Number(summary.validRows || validRows.length || 0);
+        var invalidCount = Number(summary.invalidRows || invalidRows.length || 0);
+        var createCount = Number(summary.createCount || 0);
+        var updateCount = Number(summary.updateCount || 0);
+        var warningCount = Number(summary.warningCount || 0);
+
+        function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+        return fallback || '-';
+        }
+
+        return value;
+        }
+
+        function getStudentFullName(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.nomComplet) {
+        return row.display.nomComplet;
+        }
+
+        if (row.display && row.display.fullName) {
+        return row.display.fullName;
+        }
+
+        if (row.studentData) {
+        return [
+        row.studentData.prenom || '',
+        row.studentData.nom || ''
+        ].join(' ').trim() || '-';
+        }
+
+        return [
+        row.prenom || '',
+        row.nom || ''
+        ].join(' ').trim() || '-';
+        }
+
+        function getMatricule(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.matricule) return row.display.matricule;
+        if (row.studentData && row.studentData.matricule) return row.studentData.matricule;
+        return row.matricule || '-';
+        }
+
+        function getEmail(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.email) return row.display.email;
+        if (row.studentData && row.studentData.email) return row.studentData.email;
+        return row.email || '-';
+        }
+
+        function getTelephone(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.telephone) return row.display.telephone;
+        if (row.studentData && row.studentData.telephone) return row.studentData.telephone;
+        return row.telephone || '-';
+        }
+
+        function getAcademicYear(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.academicYear) return row.display.academicYear;
+        if (row.enrollmentData && row.enrollmentData.academicYear) return row.enrollmentData.academicYear;
+        return row.academicYear || '-';
+        }
+
+        function getProgramLabel(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.programLabel) return row.display.programLabel;
+
+        var filiere = row.filiere || '';
+        var niveau = row.niveau || '';
+
+        return [filiere, niveau].join(' ').trim() || '-';
+        }
+
+        function getClassLabel(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.classLabel) return row.display.classLabel;
+        if (row.display && row.display.classCode) return row.display.classCode;
+
+        return row.classCode || '-';
+        }
+
+        function getCampusLabel(row) {
+        if (!row) return '-';
+
+        if (row.display && row.display.campusLabel) return row.display.campusLabel;
+
+        return '-';
+        }
+
+        function actionLabel(action) {
+        if (action === 'create') return 'Création';
+        if (action === 'update') return 'Mise à jour';
+        return 'Action';
+        }
+
+        function actionBadgeClass(action) {
+        if (action === 'create') return 'badge-success';
+        if (action === 'update') return 'badge-info';
+        return 'badge-neutral';
+        }
+        %>
+
+        <div class="cs-back-row">
+            <a class="cs-back-link" href="/admin/students/import">
+                ← Modifier l’import
+            </a>
+        </div>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Étudiants</span>
+
+                <h1>Prévisualisation import étudiants</h1>
+
+                <p>
+                    Vérifiez les lignes valides, les erreurs et les avertissements avant confirmation.
+                    Aucune donnée n’est encore insérée dans la base.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-secondary" href="/admin/students/import">
+                    Modifier l’import
+                </a>
+
+                <a class="btn btn-secondary" href="/admin/students">
+                    Liste étudiants
+                </a>
+            </div>
+        </section>
+
+        <section class="cs-import-steps">
+            <article class="cs-import-step is-done">
+                <span>✓</span>
+                <div>
+                    <strong>Upload</strong>
+                    <small>Fichier reçu</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step is-active">
+                <span>2</span>
+                <div>
+                    <strong>Preview</strong>
+                    <small>Vérification des lignes</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step">
+                <span>3</span>
+                <div>
+                    <strong>Confirmation</strong>
+                    <small>Insertion contrôlée</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step">
+                <span>✓</span>
+                <div>
+                    <strong>Rapport</strong>
+                    <small>Résultat final</small>
+                </div>
+            </article>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">📄</div>
+                <div>
+                    <strong>
+                        <%= totalRows %>
+                    </strong>
+                    <span>Lignes analysées</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">✅</div>
+                <div>
+                    <strong>
+                        <%= validCount %>
+                    </strong>
+                    <span>Lignes valides</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">⚠️</div>
+                <div>
+                    <strong>
+                        <%= invalidCount %>
+                    </strong>
+                    <span>Lignes invalides</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-import-preview-summary">
+            <article class="cs-import-summary-card">
+                <span class="badge badge-success">Créations prévues</span>
+                <strong>
+                    <%= createCount %>
+                </strong>
+                <p>Nouveaux comptes étudiants qui seront créés après confirmation.</p>
+            </article>
+
+            <article class="cs-import-summary-card">
+                <span class="badge badge-info">Mises à jour prévues</span>
+                <strong>
+                    <%= updateCount %>
+                </strong>
+                <p>Étudiants existants qui seront mis à jour avec les nouvelles données.</p>
+            </article>
+
+            <article class="cs-import-summary-card">
+                <span class="badge badge-warning">Avertissements</span>
+                <strong>
+                    <%= warningCount %>
+                </strong>
+                <p>Points à surveiller sans bloquer forcément la confirmation.</p>
+            </article>
+
+            <article class="cs-import-summary-card">
+                <% if (hasValidRows) { %>
+                    <span class="badge badge-success">Confirmable</span>
+                    <strong>Oui</strong>
+                    <p>Vous pouvez confirmer l’import des lignes valides.</p>
+                    <% } else { %>
+                        <span class="badge badge-danger">Bloqué</span>
+                        <strong>Non</strong>
+                        <p>Aucune ligne valide n’est disponible pour l’import.</p>
+                        <% } %>
+            </article>
+        </section>
+
+        <section class="cs-import-confirm-panel">
+            <div>
+                <h2>Confirmation</h2>
+
+                <% if (hasValidRows) { %>
+                    <p>
+                        CoreSystem importera uniquement les lignes valides.
+                        Les lignes invalides resteront exclues et visibles ci-dessous.
+                    </p>
+                    <% } else { %>
+                        <p>
+                            Aucune ligne valide n’a été détectée. Corrigez votre fichier puis relancez l’import.
+                        </p>
+                        <% } %>
+            </div>
+
+            <div class="cs-import-confirm-actions">
+                <a class="btn btn-secondary" href="/admin/students/import">
+                    Corriger le fichier
+                </a>
+
+                <% if (hasValidRows) { %>
+                    <form method="POST" action="/admin/students/import/confirm"
+                        data-confirm="Confirmer l’import des lignes valides ?">
+                        <%- include('../../partials/csrf') %>
+
+                            <button class="btn btn-primary" type="submit">
+                                Confirmer l’import
+                            </button>
+                    </form>
+                    <% } else { %>
+                        <button class="btn btn-primary" type="button" disabled>
+                            Confirmer l’import
+                        </button>
+                        <% } %>
+            </div>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Lignes valides</h2>
+                    <p>
+                        <%= validRows.length %> ligne<%= validRows.length> 1 ? 's' : '' %>
+                                prête<%= validRows.length> 1 ? 's' : '' %> à être importée<%= validRows.length> 1 ? 's'
+                                        : '' %>.
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= validRows.length %>
+                </span>
+            </div>
+
+            <% if (!validRows.length) { %>
+                <div class="empty-state compact" style="margin: 18px;">
+                    Aucune ligne valide trouvée.
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-import-preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Ligne</th>
+                                    <th>Étudiant</th>
+                                    <th>Contact</th>
+                                    <th>Scolarité</th>
+                                    <th>Action</th>
+                                    <th>Avertissements</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% validRows.forEach(function(row) { %>
+                                    <tr>
+                                        <td>
+                                            <span class="cs-row-number">
+                                                #<%= safeText(row.rowNumber, '-' ) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= getStudentFullName(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                Matricule : <%= getMatricule(row) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= getEmail(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= getTelephone(row) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= getClassLabel(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= getProgramLabel(row) %>
+                                                    • <%= getAcademicYear(row) %>
+                                                        • <%= getCampusLabel(row) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge <%= actionBadgeClass(row.action) %>">
+                                                <%= actionLabel(row.action) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <% if (row.warnings && row.warnings.length) { %>
+                                                <ul class="cs-import-message-list">
+                                                    <% row.warnings.forEach(function(warning) { %>
+                                                        <li>
+                                                            <%= warning %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                                    <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Lignes invalides</h2>
+                    <p>
+                        Ces lignes ne seront pas importées. Corrigez-les dans votre fichier source.
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= invalidRows.length %>
+                </span>
+            </div>
+
+            <% if (!invalidRows.length) { %>
+                <div class="empty-state compact" style="margin: 18px;">
+                    Aucune erreur bloquante.
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-import-preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Ligne</th>
+                                    <th>Étudiant</th>
+                                    <th>Contact</th>
+                                    <th>Données académiques</th>
+                                    <th>Erreurs</th>
+                                    <th>Avertissements</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% invalidRows.forEach(function(row) { %>
+                                    <tr>
+                                        <td>
+                                            <span class="cs-row-number is-danger">
+                                                #<%= safeText(row.rowNumber, '-' ) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= getStudentFullName(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                Matricule : <%= safeText(row.matricule, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= safeText(row.email, '-' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(row.telephone, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(row.classCode, '-' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(row.filiere, '-' ) %>
+                                                    <%= safeText(row.niveau, '' ) %>
+                                                        • <%= safeText(row.academicYear, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (row.errors && row.errors.length) { %>
+                                                <ul class="cs-import-message-list is-danger">
+                                                    <% row.errors.forEach(function(error) { %>
+                                                        <li>
+                                                            <%= error %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Erreur non précisée</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (row.warnings && row.warnings.length) { %>
+                                                <ul class="cs-import-message-list">
+                                                    <% row.warnings.forEach(function(warning) { %>
+                                                        <li>
+                                                            <%= warning %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                                    <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <%- include('../../partials/footer') %>

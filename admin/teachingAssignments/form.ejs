@@ -1,0 +1,360 @@
+﻿<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Affectation',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var a = typeof assignment !== 'undefined' && assignment ? assignment : {};
+    var safeProfessors = Array.isArray(professors) ? professors : [];
+    var safeCourses = Array.isArray(courses) ? courses : [];
+    var safeClasses = Array.isArray(classes) ? classes : [];
+    var isEdit = Boolean(a && a.id);
+    var backUrl = '/admin/assignments';
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+
+    function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+    }
+
+    function professorLabel(item) {
+        if (!item) return 'Professeur';
+
+        var name = ((item.prenom || '') + ' ' + (item.nom || '')).trim();
+
+        if (item.email) {
+            return name + ' - ' + item.email;
+        }
+
+        return name || 'Professeur';
+    }
+
+    function courseLabel(item) {
+        if (!item) return 'Cours';
+
+        var label = ((item.code || '') + ' - ' + (item.nom || '')).trim();
+
+        if (item.program) {
+            label = label + ' (' + safeText(item.program.filiere, '') + ' ' + safeText(item.program.niveau, '') + ')';
+        }
+
+        return label || 'Cours';
+    }
+
+    function classLabel(item) {
+        if (!item) return 'Classe';
+
+        var parts = [];
+
+        if (item.nom) parts.push(item.nom);
+        if (item.code) parts.push(item.code);
+        if (item.academicYear) parts.push(item.academicYear);
+        if (item.campus && item.campus.nom) parts.push(item.campus.nom);
+
+        return parts.join(' - ') || 'Classe';
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        &larr; Retour aux affectations
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Affectations</span>
+
+        <h1><%= pageTitle || (isEdit ? 'Modifier une affectation' : 'Nouvelle affectation') %></h1>
+
+        <p>
+            Une affectation relie un professeur, un cours, une classe et une annee universitaire.
+            Elle alimente le portail professeur et la logique des notes.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/assignments">
+            Liste affectations
+        </a>
+    </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+        <%= error %>
+    </div>
+<% } %>
+
+<form class="cs-assignment-form" method="POST" action="<%= formAction %>">
+    <%- include('../../partials/csrf') %>
+
+    <section class="cs-form-layout">
+        <div class="cs-form-main">
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Annee et professeur</h2>
+                        <p>Definissez l'annee universitaire et le professeur concerne.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid cs-form-grid-2">
+                    <div class="cs-form-field">
+                        <label for="academicYear">Annee universitaire *</label>
+                        <input
+                            id="academicYear"
+                            name="academicYear"
+                            type="text"
+                            value="<%= safeText(a.academicYear, '2025-2026') %>"
+                            placeholder="Ex : 2025-2026"
+                            autocomplete="off"
+                            required
+                        >
+                        <p>Format conseille : 2025-2026.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="professorId">Professeur *</label>
+                        <select id="professorId" name="professorId" required>
+                            <option value="">Selectionner un professeur</option>
+
+                            <% safeProfessors.forEach(function(professor) { %>
+                                <option
+                                    value="<%= professor.id %>"
+                                    <%= selected(a.professorId, professor.id) %>
+                                >
+                                    <%= professorLabel(professor) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        <p>Le professeur verra cette affectation dans son portail.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Cours et classe</h2>
+                        <p>Choisissez la matiere enseignee et la classe concernee.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid cs-form-grid-2">
+                    <div class="cs-form-field">
+                        <label for="courseId">Cours *</label>
+                        <select id="courseId" name="courseId" required>
+                            <option value="">Selectionner un cours</option>
+
+                            <% safeCourses.forEach(function(course) { %>
+                                <option
+                                    value="<%= course.id %>"
+                                    data-program-id="<%= course.programId || '' %>"
+                                    <%= selected(a.courseId, course.id) %>
+                                >
+                                    <%= courseLabel(course) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        <p>Le cours determine la matiere et le programme.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="classId">Classe</label>
+                        <select id="classId" name="classId">
+                            <option value="">Aucune classe</option>
+
+                            <% safeClasses.forEach(function(academicClass) { %>
+                                <option
+                                    value="<%= academicClass.id %>"
+                                    data-program-id="<%= academicClass.programId || '' %>"
+                                    <%= selected(a.classId, academicClass.id) %>
+                                >
+                                    <%= classLabel(academicClass) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        <p>Recommande pour lier clairement le professeur a une classe.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Resume avant validation</h2>
+                        <p>Verifiez la coherence avant d'enregistrer.</p>
+                    </div>
+                </div>
+
+                <div class="cs-assignment-preview">
+                    <div>
+                        <span>Annee</span>
+                        <strong data-preview="academicYear"><%= safeText(a.academicYear, 'Non defini') %></strong>
+                    </div>
+
+                    <div>
+                        <span>Professeur</span>
+                        <strong data-preview="professor">A selectionner</strong>
+                    </div>
+
+                    <div>
+                        <span>Cours</span>
+                        <strong data-preview="course">A selectionner</strong>
+                    </div>
+
+                    <div>
+                        <span>Classe</span>
+                        <strong data-preview="class">Aucune classe</strong>
+                    </div>
+
+                    <div>
+                        <span>Role</span>
+                        <strong>Enseignement</strong>
+                    </div>
+
+                    <div>
+                        <span>Impact</span>
+                        <strong>Portail professeur et notes</strong>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="cs-form-side">
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">AF</div>
+
+                <h2><%= isEdit ? 'Modification affectation' : 'Creation affectation' %></h2>
+
+                <p>
+                    Une affectation donne du sens aux modules professeur, classe et notes.
+                    Elle evite une saisie de notes sans contexte pedagogique.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">CL</div>
+
+                <h2>Logique classe</h2>
+
+                <p>
+                    Pour une gestion claire, l'affectation devrait viser une classe precise.
+                    Cela facilite la saisie et l'import des notes.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">NT</div>
+
+                <h2>Impact notes</h2>
+
+                <p>
+                    Les notes doivent ensuite suivre la logique :
+                    annee universitaire, classe, semestre et matiere.
+                </p>
+            </article>
+
+            <article class="cs-form-actions-card">
+                <button class="btn btn-primary" type="submit">
+                    <%= submitLabel || (isEdit ? 'Enregistrer' : 'Creer l affectation') %>
+                </button>
+
+                <a class="btn btn-secondary" href="<%= backUrl %>">
+                    Annuler
+                </a>
+            </article>
+        </aside>
+    </section>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var yearInput = document.getElementById('academicYear');
+        var professorSelect = document.getElementById('professorId');
+        var courseSelect = document.getElementById('courseId');
+        var classSelect = document.getElementById('classId');
+
+        var classOptions = classSelect
+            ? Array.prototype.slice.call(classSelect.options)
+            : [];
+
+        function getSelectedText(select, fallback) {
+            if (!select || !select.value) {
+                return fallback || 'A selectionner';
+            }
+
+            var option = select.options[select.selectedIndex];
+
+            return option ? option.textContent.trim() : (fallback || 'A selectionner');
+        }
+
+        function setPreview(name, value) {
+            var element = document.querySelector('[data-preview="' + name + '"]');
+
+            if (!element) return;
+
+            element.textContent = value && String(value).trim()
+                ? String(value).trim()
+                : 'Non defini';
+        }
+
+        function syncClassesWithCourse() {
+            if (!courseSelect || !classSelect) return;
+
+            var selectedOption = courseSelect.options[courseSelect.selectedIndex];
+            var selectedProgramId = selectedOption
+                ? selectedOption.getAttribute('data-program-id')
+                : '';
+
+            classOptions.forEach(function (option) {
+                if (!option.value) {
+                    option.hidden = false;
+                    return;
+                }
+
+                var optionProgramId = option.getAttribute('data-program-id');
+                var shouldShow = !selectedProgramId || optionProgramId === selectedProgramId;
+
+                option.hidden = !shouldShow;
+
+                if (!shouldShow && option.selected) {
+                    classSelect.value = '';
+                }
+            });
+        }
+
+        function syncPreview() {
+            setPreview('academicYear', yearInput ? yearInput.value : '');
+            setPreview('professor', getSelectedText(professorSelect, 'A selectionner'));
+            setPreview('course', getSelectedText(courseSelect, 'A selectionner'));
+            setPreview('class', getSelectedText(classSelect, 'Aucune classe'));
+        }
+
+        [yearInput, professorSelect, courseSelect, classSelect].forEach(function (field) {
+            if (!field) return;
+
+            field.addEventListener('input', function () {
+                syncClassesWithCourse();
+                syncPreview();
+            });
+
+            field.addEventListener('change', function () {
+                syncClassesWithCourse();
+                syncPreview();
+            });
+        });
+
+        syncClassesWithCourse();
+        syncPreview();
+    });
+</script>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,325 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Import étudiants' ,
+    session: typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeMaxRows=typeof maxRows !=='undefined' ? maxRows : 3000; var safeCsvContent=typeof csvContent
+        !=='undefined' ? csvContent : '' ; var safeSheetSelection=typeof sheetSelection !=='undefined' ? sheetSelection
+        : null; var hasSheetSelection=safeSheetSelection && safeSheetSelection.requiresChoice; %>
+
+        <div class="cs-back-row">
+            <a class="cs-back-link" href="/admin/students">
+                ← Retour aux étudiants
+            </a>
+        </div>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Étudiants</span>
+
+                <h1>Import étudiants</h1>
+
+                <p>
+                    Importez rapidement des étudiants depuis un fichier CSV ou Excel.
+                    CoreSystem vérifie les lignes avant toute insertion dans la base.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-secondary" href="/admin/students">
+                    Liste étudiants
+                </a>
+
+                <a class="btn btn-primary" href="/admin/students/new">
+                    Ajout manuel
+                </a>
+            </div>
+        </section>
+
+        <% if (typeof error !=='undefined' && error) { %>
+            <div class="alert alert-error">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <section class="cs-import-steps">
+                    <article class="cs-import-step is-active">
+                        <span>1</span>
+                        <div>
+                            <strong>Upload</strong>
+                            <small>Fichier ou CSV collé</small>
+                        </div>
+                    </article>
+
+                    <article class="cs-import-step">
+                        <span>2</span>
+                        <div>
+                            <strong>Preview</strong>
+                            <small>Vérification des lignes</small>
+                        </div>
+                    </article>
+
+                    <article class="cs-import-step">
+                        <span>3</span>
+                        <div>
+                            <strong>Confirmation</strong>
+                            <small>Insertion contrôlée</small>
+                        </div>
+                    </article>
+
+                    <article class="cs-import-step">
+                        <span>✓</span>
+                        <div>
+                            <strong>Rapport</strong>
+                            <small>Résultat final</small>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="cs-import-layout">
+                    <div class="cs-import-main">
+                        <% if (hasSheetSelection) { %>
+                            <article class="cs-form-card cs-import-warning-card">
+                                <div class="cs-form-card-head">
+                                    <div>
+                                        <h2>Choisir la feuille Excel</h2>
+                                        <p>
+                                            Le fichier <strong>
+                                                <%= safeSheetSelection.fileName %>
+                                            </strong> contient plusieurs feuilles.
+                                            Sélectionnez la feuille à prévisualiser.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <form method="POST" action="/admin/students/import/preview"
+                                    class="cs-import-sheet-form">
+                                    <%- include('../../partials/csrf') %>
+
+                                        <input type="hidden" name="usePendingFile" value="1">
+
+                                        <div class="cs-form-field">
+                                            <label for="selectedSheetName">Feuille Excel *</label>
+
+                                            <select id="selectedSheetName" name="selectedSheetName" required>
+                                                <option value="">Sélectionner une feuille</option>
+
+                                                <% safeSheetSelection.sheetNames.forEach(function(sheetName) { %>
+                                                    <option value="<%= sheetName %>"
+                                                        <%=safeSheetSelection.selectedSheetName===sheetName ? 'selected'
+                                                        : '' %>
+                                                        >
+                                                        <%= sheetName %>
+                                                    </option>
+                                                    <% }) %>
+                                            </select>
+                                        </div>
+
+                                        <div class="cs-import-actions">
+                                            <button class="btn btn-primary" type="submit">
+                                                Prévisualiser cette feuille
+                                            </button>
+
+                                            <a class="btn btn-secondary" href="/admin/students/import">
+                                                Annuler
+                                            </a>
+                                        </div>
+                                </form>
+                            </article>
+                            <% } %>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Téléverser ou coller les données</h2>
+                                            <p>
+                                                Vous pouvez importer un fichier CSV/Excel ou coller directement un
+                                                contenu CSV.
+                                                Si les deux sont fournis, le fichier est prioritaire.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="/admin/students/import/preview"
+                                        enctype="multipart/form-data">
+                                        <%- include('../../partials/csrf') %>
+
+                                            <div class="cs-import-upload-box">
+                                                <div class="cs-import-upload-icon">📥</div>
+
+                                                <div>
+                                                    <label for="importFile">Fichier CSV ou Excel</label>
+
+                                                    <input id="importFile" name="importFile" type="file"
+                                                        accept=".csv,.xlsx">
+
+                                                    <p>
+                                                        Formats acceptés : <strong>.csv</strong> et
+                                                        <strong>.xlsx</strong>.
+                                                        Les fichiers Excel avec plusieurs feuilles déclenchent une
+                                                        sélection.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div class="cs-form-field cs-import-textarea-field">
+                                                <label for="csvContent">Contenu CSV optionnel</label>
+
+                                                <textarea id="csvContent" name="csvContent" rows="12"
+                                                    placeholder="matricule;prenom;nom;email;telephone;academicYear;programFiliere;programNiveau;classCode&#10;2021001;Fatou;Keita;fatou@example.com;620000000;2025-2026;Informatique;L2;INF-L2A-BDL"><%= safeCsvContent %></textarea>
+
+                                                <p>
+                                                    Utilisez le point-virgule ou la virgule selon votre fichier.
+                                                    La prévisualisation signalera les erreurs avant confirmation.
+                                                </p>
+                                            </div>
+
+                                            <div class="cs-import-actions">
+                                                <button class="btn btn-primary" type="submit">
+                                                    Prévisualiser l’import
+                                                </button>
+
+                                                <a class="btn btn-secondary" href="/admin/students">
+                                                    Annuler
+                                                </a>
+                                            </div>
+                                    </form>
+                                </article>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Format attendu</h2>
+                                            <p>
+                                                Ces colonnes permettent de créer ou mettre à jour un étudiant et son
+                                                inscription.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="cs-table cs-import-format-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Colonne</th>
+                                                    <th>Importance</th>
+                                                    <th>Exemple</th>
+                                                    <th>Rôle</th>
+                                                </tr>
+                                            </thead>
+
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>matricule</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>2021001</td>
+                                                    <td>Identifiant unique de l’étudiant.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>prenom</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>Fatou</td>
+                                                    <td>Prénom de l’étudiant.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>nom</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>Keita</td>
+                                                    <td>Nom de famille de l’étudiant.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>email</strong></td>
+                                                    <td><span class="badge badge-info">Optionnel</span></td>
+                                                    <td>fatou@example.com</td>
+                                                    <td>Contact et futur canal de notification.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>telephone</strong></td>
+                                                    <td><span class="badge badge-info">Optionnel</span></td>
+                                                    <td>620000000</td>
+                                                    <td>Numéro de contact.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>academicYear</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>2025-2026</td>
+                                                    <td>Année universitaire de l’inscription.</td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>programFiliere</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>Informatique</td>
+                                                    <td>
+                                                        Filière du programme.
+                                                        <div class="cs-cell-muted">Alias accepté : filiere</div>
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>programNiveau</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>L2</td>
+                                                    <td>
+                                                        Niveau du programme.
+                                                        <div class="cs-cell-muted">Alias accepté : niveau</div>
+                                                    </td>
+                                                </tr>
+
+                                                <tr>
+                                                    <td><strong>classCode</strong></td>
+                                                    <td><span class="badge badge-danger">Obligatoire</span></td>
+                                                    <td>INF-L2A-BDL</td>
+                                                    <td>
+                                                        Classe de rattachement.
+                                                        <div class="cs-cell-muted">Alias accepté : classe</div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </article>
+                    </div>
+
+                    <aside class="cs-import-side">
+                        <article class="cs-form-help-card">
+                            <div class="cs-form-help-icon">📌</div>
+
+                            <h2>Limite import</h2>
+
+                            <p>
+                                L’import est limité à <strong>
+                                    <%= safeMaxRows %> lignes
+                                </strong>.
+                                Cela évite les insertions massives incontrôlées.
+                            </p>
+                        </article>
+
+                        <article class="cs-form-help-card">
+                            <div class="cs-form-help-icon">🛡️</div>
+
+                            <h2>Sécurité</h2>
+
+                            <p>
+                                Aucun étudiant n’est créé directement à l’upload.
+                                CoreSystem affiche d’abord une prévisualisation avec erreurs et avertissements.
+                            </p>
+                        </article>
+
+                        <article class="cs-form-help-card">
+                            <div class="cs-form-help-icon">🏫</div>
+
+                            <h2>Périmètre campus</h2>
+
+                            <p>
+                                L’import respecte le périmètre de l’admin connecté.
+                                Un ADMIN_CAMPUS ne doit pas importer hors de son campus.
+                            </p>
+                        </article>
+                    </aside>
+                </section>
+
+                <%- include('../../partials/footer') %>

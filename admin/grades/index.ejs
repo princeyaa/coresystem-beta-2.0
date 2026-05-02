@@ -1,0 +1,662 @@
+﻿<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Notes / Resultats',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeGrades = Array.isArray(grades) ? grades : [];
+    var safeClassContext = typeof classContext !== 'undefined' && classContext ? classContext : null;
+    var safeClassCourses = Array.isArray(classCourses) ? classCourses : [];
+    var safeEvalTypes = Array.isArray(allowedEvalTypes) ? allowedEvalTypes : ['CC', 'PARTIEL', 'EXAMEN', 'RATTRAPAGE'];
+    var safeGradeTraceMap = typeof gradeTraceMap !== 'undefined' && gradeTraceMap ? gradeTraceMap : {};
+
+    var totalGrades = safeGrades.length;
+    var publishedTotal = 0;
+    var draftTotal = 0;
+    var studentIds = [];
+    var courseIds = [];
+
+    safeGrades.forEach(function(grade) {
+        if (grade && grade.published) {
+            publishedTotal += 1;
+        } else {
+            draftTotal += 1;
+        }
+
+        if (grade.studentId && studentIds.indexOf(grade.studentId) === -1) {
+            studentIds.push(grade.studentId);
+        }
+
+        if (grade.courseId && courseIds.indexOf(grade.courseId) === -1) {
+            courseIds.push(grade.courseId);
+        }
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function studentName(student) {
+        if (!student) return 'Etudiant non defini';
+
+        var prenom = student.prenom || '';
+        var nom = student.nom || '';
+        var name = (prenom + ' ' + nom).trim();
+
+        return name || 'Etudiant';
+    }
+
+    function studentInitials(student) {
+        if (!student) return 'ET';
+
+        var prenom = student.prenom ? String(student.prenom).charAt(0) : '';
+        var nom = student.nom ? String(student.nom).charAt(0) : '';
+        var value = (prenom + nom).toUpperCase();
+
+        return value || 'ET';
+    }
+
+    function courseLabel(course) {
+        if (!course) return 'Cours non defini';
+
+        return safeText(course.code, '-') + ' - ' + safeText(course.nom, '-');
+    }
+
+    function gradeValueClass(value) {
+        var numberValue = Number(value);
+
+        if (!isFinite(numberValue)) {
+            return '';
+        }
+
+        return numberValue >= 10 ? 'is-good' : 'is-low';
+    }
+
+    function gradeBadgeClass(grade) {
+        return grade && grade.published ? 'badge-success' : 'badge-warning';
+    }
+
+    function gradeStatusLabel(grade) {
+        return grade && grade.published ? 'Publiee' : 'Brouillon';
+    }
+
+    function classLabelFromStudent(student) {
+        if (!student || !Array.isArray(student.enrollments) || !student.enrollments.length) {
+            return '-';
+        }
+
+        var enrollment = student.enrollments[0];
+
+        if (!enrollment || !enrollment.class) {
+            return '-';
+        }
+
+        return safeText(enrollment.class.nom, '-');
+    }
+
+    function classIdFromStudent(student) {
+        if (!student || !Array.isArray(student.enrollments) || !student.enrollments.length) {
+            return '';
+        }
+
+        var enrollment = student.enrollments[0];
+
+        if (!enrollment || !enrollment.class) {
+            return '';
+        }
+
+        return enrollment.class.id || '';
+    }
+
+    function academicYearFromStudent(student) {
+        if (!student || !Array.isArray(student.enrollments) || !student.enrollments.length) {
+            return '-';
+        }
+
+        return safeText(student.enrollments[0].academicYear, '-');
+    }
+%>
+
+<div class="cs-back-row">
+    <% if (safeClassContext) { %>
+        <a class="cs-back-link" href="/admin/classes/<%= safeClassContext.id %>">
+            &larr; Retour a la classe
+        </a>
+    <% } else { %>
+        <a class="cs-back-link" href="/admin/dashboard">
+            &larr; Retour au dashboard
+        </a>
+    <% } %>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Notes</span>
+
+        <h1>Notes / Resultats</h1>
+
+        <p>
+            Gere les notes par etudiant, cours, type d'evaluation et publication.
+            La logique cible reste : annee universitaire, classe, semestre, matiere, etudiant.
+        </p>
+
+        <% if (safeClassContext) { %>
+            <div class="cs-context-pill-row">
+                <span class="cs-context-pill">
+                    Classe : <strong><%= safeText(safeClassContext.nom, '-') %></strong>
+                </span>
+
+                <span class="cs-context-pill">
+                    Annee : <strong><%= safeText(safeClassContext.academicYear, '-') %></strong>
+                </span>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <% if (safeClassContext) { %>
+            <a class="btn btn-secondary" href="/admin/grades/import?classId=<%= safeClassContext.id %>">
+                Importer notes
+            </a>
+
+            <a class="btn btn-primary" href="/admin/grades/new?classId=<%= safeClassContext.id %>">
+                Nouvelle note
+            </a>
+        <% } else { %>
+            <a class="btn btn-secondary" href="/admin/grades/import">
+                Importer notes
+            </a>
+
+            <a class="btn btn-primary" href="/admin/grades/new">
+                Nouvelle note
+            </a>
+        <% } %>
+    </div>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">NT</div>
+        <div>
+            <strong><%= totalGrades %></strong>
+            <span>Notes affichees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= publishedTotal %></strong>
+            <span>Notes publiees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">BR</div>
+        <div>
+            <strong><%= draftTotal %></strong>
+            <span>Brouillons</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">ET</div>
+        <div>
+            <strong><%= studentIds.length %></strong>
+            <span>Etudiants concernes</span>
+        </div>
+    </article>
+</div>
+
+<% if (safeClassContext && safeClassCourses.length) { %>
+    <section class="cs-grade-batch-panel">
+        <div class="cs-grade-batch-head">
+            <div>
+                <h2>Publication groupee</h2>
+                <p>
+                    Publier ou depublier toutes les notes d'un cours et d'un type d'evaluation pour cette classe.
+                </p>
+            </div>
+
+            <span><%= safeClassCourses.length %> cours</span>
+        </div>
+
+        <div class="cs-grade-batch-grid">
+            <form class="cs-grade-batch-form" method="POST" action="/admin/grades/publish-batch">
+                <%- include('../../partials/csrf') %>
+
+                <input type="hidden" name="classId" value="<%= safeClassContext.id %>">
+
+                <div class="cs-form-field">
+                    <label for="publishCourseId">Cours</label>
+                    <select id="publishCourseId" name="courseId" required>
+                        <option value="">Selectionner un cours</option>
+
+                        <% safeClassCourses.forEach(function(course) { %>
+                            <option value="<%= course.id %>">
+                                <%= safeText(course.code, '-') %> - <%= safeText(course.nom, '-') %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="cs-form-field">
+                    <label for="publishTypeEvaluation">Evaluation</label>
+                    <select id="publishTypeEvaluation" name="typeEvaluation" required>
+                        <option value="">Selectionner</option>
+
+                        <% safeEvalTypes.forEach(function(type) { %>
+                            <option value="<%= type %>">
+                                <%= helpers.formatEnumLabel(type) %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                    data-confirm="Publier ce lot de notes ?"
+                >
+                    Publier le lot
+                </button>
+            </form>
+
+            <form class="cs-grade-batch-form" method="POST" action="/admin/grades/unpublish-batch">
+                <%- include('../../partials/csrf') %>
+
+                <input type="hidden" name="classId" value="<%= safeClassContext.id %>">
+
+                <div class="cs-form-field">
+                    <label for="unpublishCourseId">Cours</label>
+                    <select id="unpublishCourseId" name="courseId" required>
+                        <option value="">Selectionner un cours</option>
+
+                        <% safeClassCourses.forEach(function(course) { %>
+                            <option value="<%= course.id %>">
+                                <%= safeText(course.code, '-') %> - <%= safeText(course.nom, '-') %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="cs-form-field">
+                    <label for="unpublishTypeEvaluation">Evaluation</label>
+                    <select id="unpublishTypeEvaluation" name="typeEvaluation" required>
+                        <option value="">Selectionner</option>
+
+                        <% safeEvalTypes.forEach(function(type) { %>
+                            <option value="<%= type %>">
+                                <%= helpers.formatEnumLabel(type) %>
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <button
+                    class="btn btn-secondary"
+                    type="submit"
+                    data-confirm="Depublier ce lot de notes ?"
+                >
+                    Depublier le lot
+                </button>
+            </form>
+        </div>
+    </section>
+<% } %>
+
+<section class="cs-filter-panel">
+    <div class="cs-filter-panel-head">
+        <div>
+            <h2>Recherche rapide</h2>
+            <p>Filtrez localement les notes visibles par etudiant, matricule, cours, classe ou statut.</p>
+        </div>
+
+        <button class="cs-filter-reset" type="button" id="gradeResetFilters">
+            Reinitialiser
+        </button>
+    </div>
+
+    <form class="cs-grade-filter-form cs-student-filter-form" onsubmit="return false;">
+        <div class="cs-filter-field cs-filter-field-wide">
+            <label for="gradeSearch">Recherche</label>
+            <input
+                id="gradeSearch"
+                type="text"
+                placeholder="Etudiant, matricule, cours, classe..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="cs-filter-field">
+            <label for="gradeStatusFilter">Statut</label>
+            <select id="gradeStatusFilter">
+                <option value="">Tous les statuts</option>
+                <option value="published">Publiees</option>
+                <option value="draft">Brouillons</option>
+            </select>
+        </div>
+
+        <div class="cs-filter-field">
+            <label for="gradeTypeFilter">Evaluation</label>
+            <select id="gradeTypeFilter">
+                <option value="">Tous les types</option>
+
+                <% safeEvalTypes.forEach(function(type) { %>
+                    <option value="<%= type %>">
+                        <%= helpers.formatEnumLabel(type) %>
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+    </form>
+
+    <div class="cs-active-filter-list" id="gradeActiveFilters" style="display: none;"></div>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des notes</h2>
+            <p>
+                <span id="gradeVisibleCount"><%= safeGrades.length %></span>
+                resultat<span id="gradePlural"><%= safeGrades.length > 1 ? 's' : '' %></span> affiche<span id="gradePlural2"><%= safeGrades.length > 1 ? 's' : '' %></span>.
+            </p>
+        </div>
+
+        <span class="cs-table-count" id="gradeTableCount"><%= safeGrades.length %></span>
+    </div>
+
+    <% if (!safeGrades.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucune note trouvee</h2>
+            <p>Aucune note n'est disponible dans ce contexte.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-grades-table">
+                <thead>
+                    <tr>
+                        <th>Etudiant</th>
+                        <th>Cours</th>
+                        <th>Classe</th>
+                        <th>Evaluation</th>
+                        <th>Note</th>
+                        <th>Statut</th>
+                        <th>Derniere trace</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% safeGrades.forEach(function(grade) {
+                        var student = grade.student || null;
+                        var course = grade.course || null;
+                        var gradeClassId = classIdFromStudent(student);
+                        var gradeClassName = classLabelFromStudent(student);
+                        var gradeYear = academicYearFromStudent(student);
+                        var traceMeta = safeGradeTraceMap[grade.id] || null;
+                        var rowSearch = [
+                            studentName(student),
+                            student ? student.matricule || '' : '',
+                            courseLabel(course),
+                            gradeClassName,
+                            grade.typeEvaluation || '',
+                            grade.published ? 'publiee' : 'brouillon'
+                        ].join(' ').toLowerCase();
+                    %>
+                        <tr
+                            class="cs-grade-row"
+                            data-search="<%= rowSearch %>"
+                            data-status="<%= grade.published ? 'published' : 'draft' %>"
+                            data-type="<%= safeText(grade.typeEvaluation, '') %>"
+                        >
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar">
+                                        <%= studentInitials(student) %>
+                                    </div>
+
+                                    <div class="cs-entity-main">
+                                        <% if (student) { %>
+                                            <a class="cs-entity-title cs-grade-title-link" href="/admin/students/<%= student.id %>">
+                                                <%= studentName(student) %>
+                                            </a>
+
+                                            <span class="cs-entity-subtitle">
+                                                Matricule : <%= safeText(student.matricule, '-') %>
+                                            </span>
+                                        <% } else { %>
+                                            <span class="cs-entity-title">Etudiant non defini</span>
+                                            <span class="cs-entity-subtitle">Dossier indisponible</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= course ? safeText(course.code, '-') : '-' %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= course ? safeText(course.nom, '-') : 'Cours non defini' %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% if (gradeClassId) { %>
+                                    <a class="cs-cell-strong cs-grade-title-link" href="/admin/classes/<%= gradeClassId %>">
+                                        <%= gradeClassName %>
+                                    </a>
+                                <% } else { %>
+                                    <div class="cs-cell-strong"><%= gradeClassName %></div>
+                                <% } %>
+
+                                <div class="cs-cell-muted">
+                                    <%= gradeYear %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= helpers.formatEnumLabel(grade.typeEvaluation) %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-grade-value <%= gradeValueClass(grade.valeur) %>">
+                                    <%= safeText(grade.valeur, '-') %>
+                                    <span>/20</span>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= gradeBadgeClass(grade) %>">
+                                    <%= gradeStatusLabel(grade) %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <% if (traceMeta && traceMeta.summary) { %>
+                                    <div class="cs-cell-strong cs-text-safe">
+                                        <%= traceMeta.summary %>
+                                    </div>
+
+                                    <% if (traceMeta.createdAt) { %>
+                                        <div class="cs-cell-muted">
+                                            <%= helpers.formatDateTime(traceMeta.createdAt) %>
+                                        </div>
+                                    <% } %>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucune trace recente</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/grades/<%= grade.id %>/edit">
+                                            Modifier
+                                        </a>
+
+                                        <% if (student) { %>
+                                            <a href="/admin/students/<%= student.id %>">
+                                                Voir l'etudiant
+                                            </a>
+                                        <% } %>
+
+                                        <% if (gradeClassId) { %>
+                                            <a href="/admin/classes/<%= gradeClassId %>">
+                                                Voir la classe
+                                            </a>
+                                        <% } %>
+
+                                        <% if (course) { %>
+                                            <a href="/admin/grades?courseId=<%= course.id %>">
+                                                Notes de ce cours
+                                            </a>
+                                        <% } %>
+
+                                        <form method="POST" action="/admin/grades/<%= grade.id %>/toggle-publish">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button
+                                                type="submit"
+                                                data-confirm="<%= grade.published ? 'Depublier cette note ?' : 'Publier cette note ?' %>"
+                                            >
+                                                <%= grade.published ? 'Depublier' : 'Publier' %>
+                                            </button>
+                                        </form>
+
+                                        <form method="POST" action="/admin/grades/<%= grade.id %>/delete">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button
+                                                class="cs-danger-action"
+                                                type="submit"
+                                                data-confirm="Supprimer cette note ?"
+                                            >
+                                                Supprimer
+                                            </button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var searchInput = document.getElementById('gradeSearch');
+        var statusFilter = document.getElementById('gradeStatusFilter');
+        var typeFilter = document.getElementById('gradeTypeFilter');
+        var resetButton = document.getElementById('gradeResetFilters');
+        var activeFilters = document.getElementById('gradeActiveFilters');
+        var rows = Array.prototype.slice.call(document.querySelectorAll('.cs-grade-row'));
+        var visibleCount = document.getElementById('gradeVisibleCount');
+        var tableCount = document.getElementById('gradeTableCount');
+        var plural = document.getElementById('gradePlural');
+        var plural2 = document.getElementById('gradePlural2');
+
+        function valueOf(element) {
+            return element ? String(element.value || '').trim() : '';
+        }
+
+        function lower(value) {
+            return String(value || '').toLowerCase();
+        }
+
+        function renderActiveFilters(query, status, type) {
+            var html = '';
+
+            if (query) {
+                html += '<span>Recherche : <strong>' + query + '</strong></span>';
+            }
+
+            if (status) {
+                html += '<span>Statut : <strong>' + status + '</strong></span>';
+            }
+
+            if (type) {
+                html += '<span>Evaluation : <strong>' + type + '</strong></span>';
+            }
+
+            if (activeFilters) {
+                activeFilters.innerHTML = html;
+                activeFilters.style.display = html ? 'flex' : 'none';
+            }
+        }
+
+        function applyFilters() {
+            var query = lower(valueOf(searchInput));
+            var status = valueOf(statusFilter);
+            var type = valueOf(typeFilter);
+            var count = 0;
+
+            rows.forEach(function (row) {
+                var rowText = lower(row.getAttribute('data-search') || '');
+                var rowStatus = row.getAttribute('data-status') || '';
+                var rowType = row.getAttribute('data-type') || '';
+                var show = true;
+
+                if (query && rowText.indexOf(query) === -1) {
+                    show = false;
+                }
+
+                if (status && rowStatus !== status) {
+                    show = false;
+                }
+
+                if (type && rowType !== type) {
+                    show = false;
+                }
+
+                row.style.display = show ? '' : 'none';
+
+                if (show) {
+                    count += 1;
+                }
+            });
+
+            if (visibleCount) visibleCount.textContent = String(count);
+            if (tableCount) tableCount.textContent = String(count);
+            if (plural) plural.textContent = count > 1 ? 's' : '';
+            if (plural2) plural2.textContent = count > 1 ? 's' : '';
+
+            renderActiveFilters(valueOf(searchInput), status, type);
+        }
+
+        [searchInput, statusFilter, typeFilter].forEach(function (field) {
+            if (!field) return;
+
+            field.addEventListener('input', applyFilters);
+            field.addEventListener('change', applyFilters);
+        });
+
+        if (resetButton) {
+            resetButton.addEventListener('click', function () {
+                if (searchInput) searchInput.value = '';
+                if (statusFilter) statusFilter.value = '';
+                if (typeFilter) typeFilter.value = '';
+                applyFilters();
+            });
+        }
+
+        applyFilters();
+    });
+</script>
+
+<%- include('../../partials/footer') %>

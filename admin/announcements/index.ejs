@@ -1,0 +1,299 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Gestion des annonces',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeAnnouncements = Array.isArray(announcements) ? announcements : [];
+    var safeTraceMap = typeof announcementTraceMap !== 'undefined' && announcementTraceMap ? announcementTraceMap : {};
+    var safeFilters = typeof filters !== 'undefined' && filters ? filters : {};
+
+    var currentScope = safeFilters.scope || 'all';
+    var currentPriority = safeFilters.priority || 'all';
+
+    var totalAnnouncements = safeAnnouncements.length;
+    var generalCount = 0;
+    var targetedCount = 0;
+    var urgentCount = 0;
+    var importantCount = 0;
+
+    safeAnnouncements.forEach(function(item) {
+        if (item.programId) {
+            targetedCount += 1;
+        } else {
+            generalCount += 1;
+        }
+
+        if (item.priorite === 'URGENTE') {
+            urgentCount += 1;
+        }
+
+        if (item.priorite === 'IMPORTANTE') {
+            importantCount += 1;
+        }
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function isActiveScope(scope) {
+        return String(currentScope || 'all') === String(scope || 'all') && String(currentPriority || 'all') === 'all';
+    }
+
+    function isActivePriority(priority) {
+        return String(currentPriority || 'all') === String(priority || 'all');
+    }
+
+    function priorityBadge(priority) {
+        if (priority === 'URGENTE') return 'badge-danger';
+        if (priority === 'IMPORTANTE') return 'badge-warning';
+        return 'badge-info';
+    }
+
+    function priorityLabel(priority) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(priority);
+        }
+
+        return safeText(priority, '-');
+    }
+
+    function programLabel(item) {
+        if (!item || !item.program) {
+            return 'Annonce générale';
+        }
+
+        return [
+            item.program.filiere || '',
+            item.program.niveau || ''
+        ].join(' ').trim() || 'Programme ciblé';
+    }
+
+    function authorName(item) {
+        if (!item || !item.author) {
+            return 'Administration';
+        }
+
+        return [
+            item.author.prenom || '',
+            item.author.nom || ''
+        ].join(' ').trim() || 'Administration';
+    }
+
+    function formatDate(value) {
+        if (!value) return '-';
+
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatDate) {
+            return helpers.formatDate(value);
+        }
+
+        return value;
+    }
+
+    function formatDateTime(value) {
+        if (!value) return '-';
+
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatDateTime) {
+            return helpers.formatDateTime(value);
+        }
+
+        return value;
+    }
+
+    function isExpired(item) {
+        if (!item || !item.expiresAt) {
+            return false;
+        }
+
+        return new Date(item.expiresAt) < new Date();
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Annonces</span>
+
+        <h1>Annonces officielles</h1>
+
+        <p>
+            Publiez les communications importantes, générales ou ciblées par programme,
+            avec une traçabilité visible mais discrète.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/announcements/new">
+            Nouvelle annonce
+        </a>
+    </div>
+</section>
+
+<section class="cs-announcement-kpi-row">
+    <a
+        class="cs-list-kpi cs-announcement-kpi <%= isActiveScope('all') ? 'is-active' : '' %>"
+        href="/admin/announcements"
+    >
+        <div class="cs-list-kpi-icon">AN</div>
+        <div>
+            <strong><%= totalAnnouncements %></strong>
+            <span>Total annonces</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-announcement-kpi <%= isActiveScope('general') ? 'is-active' : '' %>"
+        href="/admin/announcements?scope=general"
+    >
+        <div class="cs-list-kpi-icon">GE</div>
+        <div>
+            <strong><%= generalCount %></strong>
+            <span>Générales</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-announcement-kpi <%= isActiveScope('targeted') ? 'is-active' : '' %>"
+        href="/admin/announcements?scope=targeted"
+    >
+        <div class="cs-list-kpi-icon">CI</div>
+        <div>
+            <strong><%= targetedCount %></strong>
+            <span>Ciblées</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-announcement-kpi <%= isActivePriority('URGENTE') ? 'is-active' : '' %>"
+        href="/admin/announcements?priority=URGENTE"
+    >
+        <div class="cs-list-kpi-icon">UR</div>
+        <div>
+            <strong><%= urgentCount %></strong>
+            <span>Urgentes</span>
+        </div>
+    </a>
+</section>
+
+<% if (currentScope !== 'all' || currentPriority !== 'all') { %>
+    <section class="cs-active-filter-list cs-announcement-active-filters">
+        <% if (currentScope === 'general') { %>
+            <span>Filtre actif : <strong>Annonces générales</strong></span>
+        <% } %>
+
+        <% if (currentScope === 'targeted') { %>
+            <span>Filtre actif : <strong>Annonces ciblées</strong></span>
+        <% } %>
+
+        <% if (currentPriority !== 'all') { %>
+            <span>Priorité : <strong><%= priorityLabel(currentPriority) %></strong></span>
+        <% } %>
+
+        <a class="cs-filter-reset" href="/admin/announcements">
+            Réinitialiser
+        </a>
+    </section>
+<% } %>
+
+<section class="cs-announcement-grid">
+    <% if (!safeAnnouncements.length) { %>
+        <div class="empty-state">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucune annonce trouvée</h2>
+            <p>Aucune annonce ne correspond au filtre sélectionné.</p>
+        </div>
+    <% } else { %>
+        <% safeAnnouncements.forEach(function(item) {
+            var traceMeta = safeTraceMap[item.id] || null;
+            var expired = isExpired(item);
+        %>
+            <article class="cs-announcement-card <%= expired ? 'is-expired' : '' %>">
+                <div class="cs-announcement-card-head">
+                    <div>
+                        <span class="badge <%= priorityBadge(item.priorite) %>">
+                            <%= priorityLabel(item.priorite) %>
+                        </span>
+
+                        <% if (expired) { %>
+                            <span class="badge badge-neutral">
+                                Expirée
+                            </span>
+                        <% } else { %>
+                            <span class="badge badge-success">
+                                Active
+                            </span>
+                        <% } %>
+                    </div>
+
+                    <details class="cs-action-dropdown">
+                        <summary>Actions</summary>
+
+                        <div class="cs-action-menu">
+                            <a href="/admin/announcements/<%= item.id %>/edit">
+                                Modifier
+                            </a>
+
+                            <form method="POST" action="/admin/announcements/<%= item.id %>/delete">
+                                <%- include('../../partials/csrf') %>
+
+                                <button
+                                    class="cs-danger-action"
+                                    type="submit"
+                                    data-confirm="Supprimer cette annonce ?"
+                                >
+                                    Supprimer
+                                </button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+
+                <h2><%= safeText(item.titre, 'Annonce') %></h2>
+
+                <p class="cs-announcement-content">
+                    <%= safeText(item.contenu, '-') %>
+                </p>
+
+                <div class="cs-announcement-meta">
+                    <div>
+                        <span>Ciblage</span>
+                        <strong><%= programLabel(item) %></strong>
+                    </div>
+
+                    <div>
+                        <span>Auteur</span>
+                        <strong><%= authorName(item) %></strong>
+                    </div>
+
+                    <div>
+                        <span>Créée le</span>
+                        <strong><%= formatDate(item.createdAt) %></strong>
+                    </div>
+
+                    <div>
+                        <span>Expiration</span>
+                        <strong><%= item.expiresAt ? formatDate(item.expiresAt) : 'Aucune' %></strong>
+                    </div>
+                </div>
+
+                <% if (traceMeta) { %>
+                    <div class="cs-announcement-trace">
+                        <strong><%= safeText(traceMeta.label, 'Trace') %></strong>
+                        <span>
+                            <%= safeText(traceMeta.summary, '-') %>
+                            <% if (traceMeta.createdAt) { %>
+                                • <%= formatDateTime(traceMeta.createdAt) %>
+                            <% } %>
+                        </span>
+                    </div>
+                <% } %>
+            </article>
+        <% }) %>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

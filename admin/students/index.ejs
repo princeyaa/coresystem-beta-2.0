@@ -1,0 +1,429 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Étudiants' , session:
+    typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeStudents=Array.isArray(students) ? students : []; var query=typeof searchQuery !=='undefined' ?
+        String(searchQuery || '' ) : '' ; var safeFilters=typeof filters !=='undefined' && filters ? filters : {}; var
+        safeOptions=typeof filterOptions !=='undefined' && filterOptions ? filterOptions : {}; var
+        safePrograms=Array.isArray(safeOptions.programs) ? safeOptions.programs : []; var
+        safeClasses=Array.isArray(safeOptions.classes) ? safeOptions.classes : []; var
+        safeCampuses=Array.isArray(safeOptions.campuses) ? safeOptions.campuses : []; var
+        safeDepartments=Array.isArray(safeOptions.departments) ? safeOptions.departments : []; var
+        safeAcademicYears=Array.isArray(safeOptions.academicYears) ? safeOptions.academicYears : []; var
+        canFilterCampus=typeof isSuperAdmin !=='undefined' ? Boolean(isSuperAdmin) : false; var showReset=typeof
+        hasActiveFilters !=='undefined' ? Boolean(hasActiveFilters) : false; var studentsWithClass=0; var
+        studentsWithoutClass=0; safeStudents.forEach(function(student) { var enrollment=student.enrollments &&
+        student.enrollments.length ? student.enrollments[0] : null; if (enrollment && enrollment.class) {
+        studentsWithClass +=1; } else { studentsWithoutClass +=1; } }); function safeText(value, fallback) { if
+        (value===null || typeof value==='undefined' || value==='' ) { return fallback || '-' ; } return value; }
+        function initialsOf(student) { var prenom=student && student.prenom ? String(student.prenom).charAt(0) : '' ;
+        var nom=student && student.nom ? String(student.nom).charAt(0) : '' ; return (prenom + nom).toUpperCase()
+        || 'ET' ; } function selected(value, expected) { return String(value || '' )===String(expected || '' )
+        ? 'selected' : '' ; } function hasFilterValue(value) { return value !==null && typeof value !=='undefined' &&
+        String(value) !=='' ; } %>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module administration</span>
+                <h1>Étudiants</h1>
+                <p>
+                    Recherchez ou filtrez les étudiants par année universitaire, classe, campus, département,
+                    programme et statut d’affectation.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-secondary" href="/admin/students/import">
+                    Importer
+                </a>
+
+                <a class="btn btn-primary" href="/admin/students/new">
+                    Nouvel étudiant
+                </a>
+            </div>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">🎓</div>
+                <div>
+                    <strong>
+                        <%= safeStudents.length %>
+                    </strong>
+                    <span>Étudiants affichés</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">🏫</div>
+                <div>
+                    <strong>
+                        <%= studentsWithClass %>
+                    </strong>
+                    <span>Avec classe visible</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">⚠️</div>
+                <div>
+                    <strong>
+                        <%= studentsWithoutClass %>
+                    </strong>
+                    <span>Sans classe visible</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-filter-panel">
+            <div class="cs-filter-panel-head">
+                <div>
+                    <h2>Recherche et filtres</h2>
+                    <p>
+                        Combinez une recherche texte avec des filtres académiques pour retrouver un groupe précis.
+                    </p>
+                </div>
+
+                <% if (showReset) { %>
+                    <a class="cs-filter-reset" href="/admin/students">
+                        Réinitialiser
+                    </a>
+                    <% } %>
+            </div>
+
+            <form class="cs-student-filter-form" method="GET" action="/admin/students">
+                <div class="cs-filter-field cs-filter-field-wide">
+                    <label for="q">Recherche</label>
+                    <input id="q" name="q" type="text" value="<%= query %>"
+                        placeholder="Matricule, nom, prénom, email, classe..." autocomplete="off">
+                </div>
+
+                <div class="cs-filter-field">
+                    <label for="academicYear">Année universitaire</label>
+                    <select id="academicYear" name="academicYear">
+                        <option value="">Toutes les années</option>
+
+                        <% safeAcademicYears.forEach(function(year) { %>
+                            <option value="<%= year %>" <%=selected(safeFilters.academicYear, year) %>>
+                                <%= year %>
+                            </option>
+                            <% }) %>
+                    </select>
+                </div>
+
+                <% if (canFilterCampus) { %>
+                    <div class="cs-filter-field">
+                        <label for="campusId">Campus</label>
+                        <select id="campusId" name="campusId">
+                            <option value="">Tous les campus</option>
+
+                            <% safeCampuses.forEach(function(campus) { %>
+                                <option value="<%= campus.id %>" <%=selected(safeFilters.campusId, campus.id) %>>
+                                    <%= campus.nom %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <% } %>
+
+                        <div class="cs-filter-field">
+                            <label for="departmentId">Département</label>
+                            <select id="departmentId" name="departmentId">
+                                <option value="">Tous les départements</option>
+
+                                <% safeDepartments.forEach(function(department) { %>
+                                    <option value="<%= department.id %>" <%=selected(safeFilters.departmentId,
+                                        department.id) %>>
+                                        <%= department.nom %>
+                                            <% if (department.campus && canFilterCampus) { %>
+                                                — <%= department.campus.nom %>
+                                                    <% } %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="programId">Programme</label>
+                            <select id="programId" name="programId">
+                                <option value="">Tous les programmes</option>
+
+                                <% safePrograms.forEach(function(program) { %>
+                                    <option value="<%= program.id %>" <%=selected(safeFilters.programId, program.id) %>>
+                                        <%= program.filiere %>
+                                            <%= program.niveau %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="classId">Classe</label>
+                            <select id="classId" name="classId">
+                                <option value="">Toutes les classes</option>
+
+                                <% safeClasses.forEach(function(academicClass) { %>
+                                    <option value="<%= academicClass.id %>" <%=selected(safeFilters.classId,
+                                        academicClass.id) %>>
+                                        <%= academicClass.nom %>
+                                            <% if (academicClass.academicYear) { %>
+                                                — <%= academicClass.academicYear %>
+                                                    <% } %>
+                                                        <% if (academicClass.campus && canFilterCampus) { %>
+                                                            — <%= academicClass.campus.nom %>
+                                                                <% } %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="enrollmentStatus">Affectation</label>
+                            <select id="enrollmentStatus" name="enrollmentStatus">
+                                <option value="all" <%=selected(safeFilters.enrollmentStatus, 'all' ) %>>
+                                    Tous
+                                </option>
+                                <option value="withClass" <%=selected(safeFilters.enrollmentStatus, 'withClass' ) %>>
+                                    Avec classe
+                                </option>
+                                <option value="withoutClass" <%=selected(safeFilters.enrollmentStatus, 'withoutClass' )
+                                    %>>
+                                    Sans classe
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="paymentStatus">Paiement</label>
+                            <select id="paymentStatus" name="paymentStatus" disabled>
+                                <option value="all">À venir avec le module paiements</option>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-actions">
+                            <button class="btn btn-primary" type="submit">
+                                Appliquer les filtres
+                            </button>
+
+                            <% if (showReset) { %>
+                                <a class="btn btn-secondary" href="/admin/students">
+                                    Tout réinitialiser
+                                </a>
+                                <% } %>
+                        </div>
+            </form>
+
+            <% if (showReset) { %>
+                <div class="cs-active-filter-list">
+                    <% if (query) { %>
+                        <span>Recherche : <strong>
+                                <%= query %>
+                            </strong></span>
+                        <% } %>
+
+                            <% if (hasFilterValue(safeFilters.academicYear)) { %>
+                                <span>Année : <strong>
+                                        <%= safeFilters.academicYear %>
+                                    </strong></span>
+                                <% } %>
+
+                                    <% if (canFilterCampus && hasFilterValue(safeFilters.campusId)) { %>
+                                        <span>Campus filtré</span>
+                                        <% } %>
+
+                                            <% if (hasFilterValue(safeFilters.departmentId)) { %>
+                                                <span>Département filtré</span>
+                                                <% } %>
+
+                                                    <% if (hasFilterValue(safeFilters.programId)) { %>
+                                                        <span>Programme filtré</span>
+                                                        <% } %>
+
+                                                            <% if (hasFilterValue(safeFilters.classId)) { %>
+                                                                <span>Classe filtrée</span>
+                                                                <% } %>
+
+                                                                    <% if (safeFilters.enrollmentStatus &&
+                                                                        safeFilters.enrollmentStatus !=='all' ) { %>
+                                                                        <span>
+                                                                            Affectation :
+                                                                            <strong>
+                                                                                <%= safeFilters.enrollmentStatus==='withClass'
+                                                                                    ? 'Avec classe' : 'Sans classe' %>
+                                                                            </strong>
+                                                                        </span>
+                                                                        <% } %>
+                </div>
+                <% } %>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Liste des étudiants</h2>
+                    <p>
+                        <%= safeStudents.length %> résultat<%= safeStudents.length> 1 ? 's' : '' %>
+                                <% if (query) { %>
+                                    pour “<strong>
+                                        <%= query %>
+                                    </strong>”
+                                    <% } %>
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= safeStudents.length %>
+                </span>
+            </div>
+
+            <% if (!safeStudents.length) { %>
+                <div class="empty-state" style="margin: 18px;">
+                    <div class="empty-state-icon">∅</div>
+                    <h2>Aucun étudiant trouvé</h2>
+                    <p>Aucun étudiant ne correspond à cette recherche ou à ces filtres dans votre périmètre.</p>
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-students-table">
+                            <thead>
+                                <tr>
+                                    <th>Étudiant</th>
+                                    <th>Classe actuelle</th>
+                                    <th>Campus</th>
+                                    <th>Parcours</th>
+                                    <th>Contact</th>
+                                    <th>Activité</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% safeStudents.forEach(function(student) { var currentEnrollment=student.enrollments &&
+                                    student.enrollments.length ? student.enrollments[0] : null; var
+                                    currentClass=currentEnrollment ? currentEnrollment.class : null; var
+                                    currentProgram=currentEnrollment ? currentEnrollment.program : null; var
+                                    currentCampus=currentClass ? currentClass.campus : null; var
+                                    currentDepartment=currentClass ? currentClass.department : null; %>
+                                    <tr>
+                                        <td>
+                                            <div class="cs-entity-cell">
+                                                <div class="cs-entity-avatar">
+                                                    <%= initialsOf(student) %>
+                                                </div>
+
+                                                <div class="cs-entity-main">
+                                                    <a class="cs-entity-title" href="/admin/students/<%= student.id %>">
+                                                        <%= safeText(student.prenom, '' ) %>
+                                                            <%= safeText(student.nom, '' ) %>
+                                                    </a>
+
+                                                    <span class="cs-entity-subtitle">
+                                                        Matricule : <%= safeText(student.matricule, 'Non défini' ) %>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (currentClass) { %>
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(currentClass.nom, 'Classe' ) %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    <%= safeText(currentClass.code, 'Code non défini' ) %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="badge badge-warning">Non affecté</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= currentCampus ? safeText(currentCampus.nom, '-' ) : '-' %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= currentDepartment ? safeText(currentDepartment.nom, '-' )
+                                                    : 'Département non défini' %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (currentProgram) { %>
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(currentProgram.filiere, '-' ) %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    Niveau : <%= safeText(currentProgram.niveau, '-' ) %>
+                                                        <% if (currentEnrollment && currentEnrollment.academicYear) { %>
+                                                            • <%= currentEnrollment.academicYear %>
+                                                                <% } %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Parcours non défini</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= safeText(student.email, 'Email non défini' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(student.telephone, 'Téléphone non défini' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-muted">
+                                                Créé le
+                                            </div>
+
+                                            <div class="cs-cell-strong">
+                                                <%= student.createdAt ? helpers.formatDate(student.createdAt) : '-' %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <details class="cs-action-dropdown">
+                                                <summary>Actions</summary>
+
+                                                <div class="cs-action-menu">
+                                                    <a href="/admin/students/<%= student.id %>">
+                                                        Voir la fiche
+                                                    </a>
+
+                                                    <a href="/admin/students/<%= student.id %>/edit">
+                                                        Modifier
+                                                    </a>
+
+                                                    <form method="POST"
+                                                        action="/admin/students/<%= student.id %>/reset-password">
+                                                        <%- include('../../partials/csrf') %>
+                                                            <button type="submit"
+                                                                data-confirm="Réinitialiser le mot de passe de cet étudiant ?">
+                                                                Réinitialiser le mot de passe
+                                                            </button>
+                                                    </form>
+
+                                                    <form method="POST"
+                                                        action="/admin/students/<%= student.id %>/delete">
+                                                        <%- include('../../partials/csrf') %>
+                                                            <button class="cs-danger-action" type="submit"
+                                                                data-confirm="Supprimer définitivement cet étudiant ?">
+                                                                Supprimer
+                                                            </button>
+                                                    </form>
+                                                </div>
+                                            </details>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <%- include('../../partials/footer') %>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= typeof title !== 'undefined' ? title : 'CoreSystem' %>
+    </title>
+
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('coresystem.theme');
+                document.documentElement.setAttribute('data-cs-theme', savedTheme || 'light');
+            } catch (error) {
+                document.documentElement.setAttribute('data-cs-theme', 'light');
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="/css/coresystem.css">
+    <link rel="stylesheet" href="/css/admin-shell.css">
+</head>
+
+<%
+    var headerSession = typeof session !== 'undefined' && session ? session : {};
+    var headerCurrentPath = typeof currentPath !== 'undefined' && currentPath ? currentPath : '';
+
+    var isAdminShell = Boolean(headerSession.adminId);
+    var isProfessorShell = Boolean(headerSession.professorId);
+    var isStudentShell = Boolean(headerSession.userId);
+
+    var useShell = isAdminShell || isProfessorShell || isStudentShell;
+%>
+
+<body class="<%= useShell ? 'cs-admin-shell-body' : '' %>">
+
+    <% if (useShell) { %>
+        <%- include('./adminTopNav', {
+            session: headerSession,
+            currentPath: headerCurrentPath
+        }) %>
+
+        <main class="cs-admin-main">
+            <%- include('./flash') %>
+    <% } else { %>
+        <header class="app-topbar">
+            <div class="app-topbar-inner">
+                <a href="/login" class="brand-block">
+                    <div class="brand-mark">CS</div>
+
+                    <div class="brand-title">
+                        <strong>CoreSystem</strong>
+                        <span>Gestion académique</span>
+                    </div>
+                </a>
+
+                <div class="topbar-links">
+                    <a href="/login">Connexion étudiant</a>
+                    <a href="/professor/login">Connexion professeur</a>
+                    <a href="/admin/login">Administration</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <%- include('./flash') %>
+    <% } %> 

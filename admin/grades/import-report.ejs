@@ -1,0 +1,445 @@
+﻿<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Rapport import notes',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeReport = typeof report !== 'undefined' && report ? report : {};
+    var safeClassContext = typeof classContext !== 'undefined' && classContext ? classContext : null;
+    var counts = safeReport.counts || {};
+    var rows = Array.isArray(safeReport.rows) ? safeReport.rows : [];
+    var invalidRows = Array.isArray(safeReport.invalidRows) ? safeReport.invalidRows : [];
+
+    var createdRows = [];
+    var updatedRows = [];
+    var rejectedRows = [];
+
+    rows.forEach(function(row) {
+        if (row.status === 'created') {
+            createdRows.push(row);
+        } else if (row.status === 'updated') {
+            updatedRows.push(row);
+        } else if (row.status === 'rejected') {
+            rejectedRows.push(row);
+        }
+    });
+
+    var totalRows = Number(counts.totalRows || rows.length + invalidRows.length || 0);
+    var createdCount = Number(counts.createdCount || createdRows.length || 0);
+    var updatedCount = Number(counts.updatedCount || updatedRows.length || 0);
+    var rejectedCount = Number(counts.rejectedCount || rejectedRows.length + invalidRows.length || 0);
+    var warningCount = Number(counts.warningCount || 0);
+    var successCount = createdCount + updatedCount;
+    var allRejectedRows = invalidRows.concat(rejectedRows);
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function displayValue(row, key, fallback) {
+        if (row && row.display && typeof row.display[key] !== 'undefined' && row.display[key] !== null && row.display[key] !== '') {
+            return row.display[key];
+        }
+
+        if (row && typeof row[key] !== 'undefined' && row[key] !== null && row[key] !== '') {
+            return row[key];
+        }
+
+        return fallback || '-';
+    }
+
+    function statusLabel(status) {
+        if (status === 'created') return 'Creee';
+        if (status === 'updated') return 'Mise a jour';
+        if (status === 'rejected') return 'Rejetee';
+        return 'Inconnu';
+    }
+
+    function statusBadge(status) {
+        if (status === 'created') return 'badge-success';
+        if (status === 'updated') return 'badge-info';
+        if (status === 'rejected') return 'badge-danger';
+        return 'badge-neutral';
+    }
+
+    function hasMessages(messages) {
+        return Array.isArray(messages) && messages.length > 0;
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="/admin/grades<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+        &larr; Retour aux notes
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Notes</span>
+
+        <h1>Rapport import notes</h1>
+
+        <p>
+            Resultat final de l'import des notes. Les notes creees ou mises a jour restent non publiees.
+        </p>
+
+        <% if (safeClassContext) { %>
+            <div class="cs-context-pill-row">
+                <span class="cs-context-pill">
+                    Classe : <strong><%= safeText(safeClassContext.nom, '-') %></strong>
+                </span>
+
+                <span class="cs-context-pill">
+                    Annee : <strong><%= safeText(safeClassContext.academicYear, '-') %></strong>
+                </span>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/grades/import<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+            Nouvel import
+        </a>
+
+        <a class="btn btn-primary" href="/admin/grades<%= safeClassContext ? '?classId=' + safeClassContext.id : '' %>">
+            Voir les notes
+        </a>
+    </div>
+</section>
+
+<section class="cs-import-steps">
+    <article class="cs-import-step is-done">
+        <span>1</span>
+        <div>
+            <strong>Classe</strong>
+            <small>Selectionnee</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step is-done">
+        <span>2</span>
+        <div>
+            <strong>Upload</strong>
+            <small>Fichier recu</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step is-done">
+        <span>3</span>
+        <div>
+            <strong>Preview</strong>
+            <small>Verifie</small>
+        </div>
+    </article>
+
+    <article class="cs-import-step is-active">
+        <span>4</span>
+        <div>
+            <strong>Rapport</strong>
+            <small>Resultat final</small>
+        </div>
+    </article>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">TL</div>
+        <div>
+            <strong><%= totalRows %></strong>
+            <span>Lignes traitees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= successCount %></strong>
+            <span>Notes importees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">ER</div>
+        <div>
+            <strong><%= rejectedCount %></strong>
+            <span>Lignes rejetees</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">AV</div>
+        <div>
+            <strong><%= warningCount %></strong>
+            <span>Avertissements</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-import-report-summary">
+    <article class="cs-import-report-card is-success">
+        <span>Creations</span>
+        <strong><%= createdCount %></strong>
+        <p>Nouvelles notes creees en brouillon.</p>
+    </article>
+
+    <article class="cs-import-report-card is-info">
+        <span>Mises a jour</span>
+        <strong><%= updatedCount %></strong>
+        <p>Notes existantes modifiees et remises en brouillon.</p>
+    </article>
+
+    <article class="cs-import-report-card <%= rejectedCount > 0 ? 'is-danger' : 'is-success' %>">
+        <span>Rejets</span>
+        <strong><%= rejectedCount %></strong>
+        <p>Lignes non importees a cause d'erreurs.</p>
+    </article>
+
+    <article class="cs-import-report-card is-warning">
+        <span>Avertissements</span>
+        <strong><%= warningCount %></strong>
+        <p>Points a surveiller apres import.</p>
+    </article>
+</section>
+
+<section class="cs-import-final-panel <%= rejectedCount > 0 ? 'is-partial' : 'is-complete' %>">
+    <div>
+        <h2>Etat final : <%= rejectedCount > 0 ? 'Partiel' : 'Termine' %></h2>
+
+        <% if (rejectedCount > 0) { %>
+            <p>
+                L'import est termine, mais certaines lignes ont ete rejetees.
+                Corrigez le fichier source si necessaire.
+            </p>
+        <% } else { %>
+            <p>
+                L'import est termine sans erreur bloquante.
+                Les notes importees restent en brouillon jusqu'a publication.
+            </p>
+        <% } %>
+    </div>
+
+    <div class="cs-import-final-meta">
+        <span>
+            Preview :
+            <strong><%= safeReport.generatedAt ? helpers.formatDateTime(safeReport.generatedAt) : '-' %></strong>
+        </span>
+
+        <span>
+            Confirmation :
+            <strong><%= safeReport.confirmedAt ? helpers.formatDateTime(safeReport.confirmedAt) : '-' %></strong>
+        </span>
+    </div>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Lignes importees</h2>
+            <p>Notes creees ou mises a jour.</p>
+        </div>
+
+        <span class="cs-table-count"><%= rows.length %></span>
+    </div>
+
+    <% if (!rows.length) { %>
+        <div class="empty-state compact" style="margin: 18px;">
+            Aucune note importee.
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-grade-import-table">
+                <thead>
+                    <tr>
+                        <th>Ligne</th>
+                        <th>Etudiant</th>
+                        <th>Cours</th>
+                        <th>Evaluation</th>
+                        <th>Note</th>
+                        <th>Statut</th>
+                        <th>Avertissements</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% rows.forEach(function(row) { %>
+                        <tr>
+                            <td>
+                                <span class="cs-row-number <%= row.status === 'rejected' ? 'is-danger' : '' %>">
+                                    #<%= safeText(row.rowNumber, '-') %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'studentNom', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    Matricule : <%= displayValue(row, 'matricule', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'courseCode', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= displayValue(row, 'courseNom', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'typeEvaluation', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-grade-value <%= Number(displayValue(row, 'valeur', 0)) >= 10 ? 'is-good' : 'is-low' %>">
+                                    <%= displayValue(row, 'valeur', '-') %>
+                                    <span>/20</span>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= statusBadge(row.status) %>">
+                                    <%= statusLabel(row.status) %>
+                                </span>
+
+                                <% if (row.error) { %>
+                                    <div class="cs-cell-muted" style="margin-top: 6px;">
+                                        <%= row.error %>
+                                    </div>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.warnings)) { %>
+                                    <ul class="cs-import-message-list">
+                                        <% row.warnings.forEach(function(warning) { %>
+                                            <li><%= warning %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Lignes rejetees ou invalides</h2>
+            <p>Ces lignes n'ont pas ete importees.</p>
+        </div>
+
+        <span class="cs-table-count"><%= allRejectedRows.length %></span>
+    </div>
+
+    <% if (!allRejectedRows.length) { %>
+        <div class="empty-state compact" style="margin: 18px;">
+            Aucune ligne rejetee.
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-grade-import-table">
+                <thead>
+                    <tr>
+                        <th>Ligne</th>
+                        <th>Etudiant</th>
+                        <th>Cours</th>
+                        <th>Evaluation</th>
+                        <th>Note</th>
+                        <th>Erreurs</th>
+                        <th>Avertissements</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% allRejectedRows.forEach(function(row) { %>
+                        <tr>
+                            <td>
+                                <span class="cs-row-number is-danger">
+                                    #<%= safeText(row.rowNumber, '-') %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'studentNom', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    Matricule : <%= displayValue(row, 'matricule', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'courseCode', '-') %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= displayValue(row, 'courseNom', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'typeEvaluation', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= displayValue(row, 'valeur', '-') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.errors)) { %>
+                                    <ul class="cs-import-message-list is-danger">
+                                        <% row.errors.forEach(function(errorMessage) { %>
+                                            <li><%= errorMessage %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else if (row.error) { %>
+                                    <ul class="cs-import-message-list is-danger">
+                                        <li><%= row.error %></li>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Erreur non precisee</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <% if (hasMessages(row.warnings)) { %>
+                                    <ul class="cs-import-message-list">
+                                        <% row.warnings.forEach(function(warning) { %>
+                                            <li><%= warning %></li>
+                                        <% }) %>
+                                    </ul>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

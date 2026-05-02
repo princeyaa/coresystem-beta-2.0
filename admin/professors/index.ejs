@@ -1,0 +1,444 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Professeurs' , session:
+    typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeProfessors=Array.isArray(professors) ? professors : []; var query=typeof searchQuery !=='undefined' ?
+        String(searchQuery || '' ) : '' ; var safeFilters=typeof filters !=='undefined' && filters ? filters : {}; var
+        safeOptions=typeof filterOptions !=='undefined' && filterOptions ? filterOptions : {}; var
+        safeCampuses=Array.isArray(safeOptions.campuses) ? safeOptions.campuses : []; var
+        safeDepartments=Array.isArray(safeOptions.departments) ? safeOptions.departments : []; var
+        canFilterCampus=typeof isSuperAdmin !=='undefined' ? Boolean(isSuperAdmin) : false; var showReset=typeof
+        hasActiveFilters !=='undefined' ? Boolean(hasActiveFilters) : false; var activeCount=0; var inactiveCount=0; var
+        withAssignmentsCount=0; safeProfessors.forEach(function(item) { if (item.isActive) { activeCount +=1; } else {
+        inactiveCount +=1; } if (item._count && Number(item._count.assignments)> 0) {
+        withAssignmentsCount += 1;
+        }
+        });
+
+        function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+        return fallback || '-';
+        }
+
+        return value;
+        }
+
+        function initialsOf(item) {
+        var prenom = item && item.prenom ? String(item.prenom).charAt(0) : '';
+        var nom = item && item.nom ? String(item.nom).charAt(0) : '';
+        var value = (prenom + nom).toUpperCase();
+
+        return value || 'PR';
+        }
+
+        function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+        }
+
+        function hasFilterValue(value) {
+        return value !== null && typeof value !== 'undefined' && String(value) !== '';
+        }
+
+        function professorFullName(item) {
+        var prenom = item && item.prenom ? item.prenom : '';
+        var nom = item && item.nom ? item.nom : '';
+        var name = (prenom + ' ' + nom).trim();
+
+        return name || 'Professeur';
+        }
+
+        function statusBadgeClass(item) {
+        return item && item.isActive ? 'badge-success' : 'badge-danger';
+        }
+
+        function statusLabel(item) {
+        return item && item.isActive ? 'Actif' : 'Desactive';
+        }
+        %>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Professeurs</span>
+
+                <h1>Professeurs</h1>
+
+                <p>
+                    Gerez les comptes professeurs, leurs rattachements administratifs,
+                    leur statut d'acces et leurs affectations pedagogiques.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-primary" href="/admin/professors/new">
+                    Nouveau professeur
+                </a>
+            </div>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">PR</div>
+                <div>
+                    <strong>
+                        <%= safeProfessors.length %>
+                    </strong>
+                    <span>Professeurs affiches</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">OK</div>
+                <div>
+                    <strong>
+                        <%= activeCount %>
+                    </strong>
+                    <span>Comptes actifs</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">AF</div>
+                <div>
+                    <strong>
+                        <%= withAssignmentsCount %>
+                    </strong>
+                    <span>Avec affectation</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-filter-panel">
+            <div class="cs-filter-panel-head">
+                <div>
+                    <h2>Recherche et filtres</h2>
+                    <p>
+                        Filtrez les professeurs par recherche, campus, departement, statut ou affectation.
+                    </p>
+                </div>
+
+                <% if (showReset) { %>
+                    <a class="cs-filter-reset" href="/admin/professors">
+                        Reinitialiser
+                    </a>
+                    <% } %>
+            </div>
+
+            <form class="cs-professor-filter-form cs-student-filter-form" method="GET" action="/admin/professors">
+                <div class="cs-filter-field cs-filter-field-wide">
+                    <label for="q">Recherche</label>
+                    <input id="q" name="q" type="text" value="<%= query %>"
+                        placeholder="Nom, prenom, email ou telephone..." autocomplete="off">
+                </div>
+
+                <% if (canFilterCampus) { %>
+                    <div class="cs-filter-field">
+                        <label for="campusId">Campus</label>
+                        <select id="campusId" name="campusId">
+                            <option value="">Tous les campus</option>
+
+                            <% safeCampuses.forEach(function(campus) { %>
+                                <option value="<%= campus.id %>" <%=selected(safeFilters.campusId, campus.id) %>>
+                                    <%= safeText(campus.nom, 'Campus' ) %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <% } %>
+
+                        <div class="cs-filter-field">
+                            <label for="departmentId">Departement</label>
+                            <select id="departmentId" name="departmentId">
+                                <option value="">Tous les departements</option>
+
+                                <% safeDepartments.forEach(function(department) { %>
+                                    <option value="<%= department.id %>"
+                                        data-campus-id="<%= department.campusId || '' %>"
+                                        <%=selected(safeFilters.departmentId, department.id) %>
+                                        >
+                                        <%= safeText(department.nom, 'Departement' ) %>
+                                            <% if (department.campus && department.campus.nom) { %>
+                                                - <%= department.campus.nom %>
+                                                    <% } %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="status">Statut</label>
+                            <select id="status" name="status">
+                                <option value="all" <%=selected(safeFilters.status || 'all' , 'all' ) %>>
+                                    Tous les statuts
+                                </option>
+                                <option value="active" <%=selected(safeFilters.status, 'active' ) %>>
+                                    Actifs
+                                </option>
+                                <option value="inactive" <%=selected(safeFilters.status, 'inactive' ) %>>
+                                    Desactives
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="assignmentStatus">Affectations</label>
+                            <select id="assignmentStatus" name="assignmentStatus">
+                                <option value="all" <%=selected(safeFilters.assignmentStatus || 'all' , 'all' ) %>>
+                                    Toutes
+                                </option>
+                                <option value="withAssignments"
+                                    <%=selected(safeFilters.assignmentStatus, 'withAssignments' ) %>>
+                                    Avec affectation
+                                </option>
+                                <option value="withoutAssignments"
+                                    <%=selected(safeFilters.assignmentStatus, 'withoutAssignments' ) %>>
+                                    Sans affectation
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-actions">
+                            <button class="btn btn-primary" type="submit">
+                                Appliquer
+                            </button>
+
+                            <% if (showReset) { %>
+                                <a class="btn btn-secondary" href="/admin/professors">
+                                    Reinitialiser
+                                </a>
+                                <% } %>
+                        </div>
+            </form>
+
+            <% if (showReset) { %>
+                <div class="cs-active-filter-list">
+                    <% if (query) { %>
+                        <span>Recherche : <strong>
+                                <%= query %>
+                            </strong></span>
+                        <% } %>
+
+                            <% if (canFilterCampus && hasFilterValue(safeFilters.campusId)) { %>
+                                <span>Campus filtre</span>
+                                <% } %>
+
+                                    <% if (hasFilterValue(safeFilters.departmentId)) { %>
+                                        <span>Departement filtre</span>
+                                        <% } %>
+
+                                            <% if (safeFilters.status && safeFilters.status !=='all' ) { %>
+                                                <span>
+                                                    Statut :
+                                                    <strong>
+                                                        <%= safeFilters.status==='active' ? 'Actifs' : 'Desactives' %>
+                                                    </strong>
+                                                </span>
+                                                <% } %>
+
+                                                    <% if (safeFilters.assignmentStatus && safeFilters.assignmentStatus
+                                                        !=='all' ) { %>
+                                                        <span>
+                                                            Affectations :
+                                                            <strong>
+                                                                <%= safeFilters.assignmentStatus==='withAssignments'
+                                                                    ? 'Avec affectation' : 'Sans affectation' %>
+                                                            </strong>
+                                                        </span>
+                                                        <% } %>
+                </div>
+                <% } %>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Liste des professeurs</h2>
+
+                    <p>
+                        <%= safeProfessors.length %> resultat<%= safeProfessors.length> 1 ? 's' : '' %>
+                                <% if (query) { %>
+                                    pour "<strong>
+                                        <%= query %>
+                                    </strong>"
+                                    <% } %>
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= safeProfessors.length %>
+                </span>
+            </div>
+
+            <% if (!safeProfessors.length) { %>
+                <div class="empty-state" style="margin: 18px;">
+                    <div class="empty-state-icon">∅</div>
+                    <h2>Aucun professeur trouve</h2>
+                    <p>Aucun professeur ne correspond a cette recherche ou a ces filtres dans votre perimetre.</p>
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-professors-table">
+                            <thead>
+                                <tr>
+                                    <th>Professeur</th>
+                                    <th>Contact</th>
+                                    <th>Rattachement</th>
+                                    <th>Statut</th>
+                                    <th>Affectations</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% safeProfessors.forEach(function(item) { var assignmentsCount=item._count ?
+                                    Number(item._count.assignments || 0) : 0; var toggleConfirmMessage=item.isActive
+                                    ? 'Desactiver ce compte professeur ?' : 'Reactiver ce compte professeur ?' ; var
+                                    toggleLabel=item.isActive ? 'Desactiver' : 'Reactiver' ; %>
+                                    <tr>
+                                        <td>
+                                            <div class="cs-entity-cell">
+                                                <div class="cs-entity-avatar">
+                                                    <%= initialsOf(item) %>
+                                                </div>
+
+                                                <div class="cs-entity-main">
+                                                    <a class="cs-entity-title cs-professor-title-link"
+                                                        href="/admin/professors/<%= item.id %>">
+                                                        <%= professorFullName(item) %>
+                                                    </a>
+
+                                                    <span class="cs-entity-subtitle">
+                                                        Professeur
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= safeText(item.email, 'Email non defini' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(item.telephone, 'Telephone non renseigne' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= item.campus ? safeText(item.campus.nom, '-' ) : 'Campus non defini'
+                                                    %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= item.department ? safeText(item.department.nom, '-' )
+                                                    : 'Departement non defini' %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge <%= statusBadgeClass(item) %>">
+                                                <%= statusLabel(item) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <a class="cs-cell-strong cs-professor-title-link"
+                                                href="/admin/assignments?professorId=<%= item.id %>">
+                                                <%= assignmentsCount %> affectation<%= assignmentsCount> 1 ? 's' : '' %>
+                                            </a>
+
+                                            <div class="cs-cell-muted">
+                                                Cours et classes lies
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <details class="cs-action-dropdown">
+                                                <summary>Actions</summary>
+
+                                                <div class="cs-action-menu">
+                                                    <a href="/admin/professors/<%= item.id %>">
+                                                        Voir la fiche
+                                                    </a>
+
+                                                    <a href="/admin/professors/<%= item.id %>/edit">
+                                                        Modifier
+                                                    </a>
+
+                                                    <a href="/admin/assignments?professorId=<%= item.id %>">
+                                                        Affectations
+                                                    </a>
+
+                                                    <form method="POST"
+                                                        action="/admin/professors/<%= item.id %>/reset-password">
+                                                        <%- include('../../partials/csrf') %>
+                                                            <button type="submit"
+                                                                data-confirm="Reinitialiser le mot de passe de ce professeur ?">
+                                                                Reinitialiser mot de passe
+                                                            </button>
+                                                    </form>
+
+                                                    <form method="POST"
+                                                        action="/admin/professors/<%= item.id %>/toggle-active">
+                                                        <%- include('../../partials/csrf') %>
+                                                            <button type="submit"
+                                                                data-confirm="<%= toggleConfirmMessage %>">
+                                                                <%= toggleLabel %>
+                                                            </button>
+                                                    </form>
+
+                                                    <form method="POST"
+                                                        action="/admin/professors/<%= item.id %>/delete">
+                                                        <%- include('../../partials/csrf') %>
+                                                            <button class="cs-danger-action" type="submit"
+                                                                data-confirm="Supprimer definitivement ce professeur ?">
+                                                                Supprimer
+                                                            </button>
+                                                    </form>
+                                                </div>
+                                            </details>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var campusSelect = document.getElementById('campusId');
+                var departmentSelect = document.getElementById('departmentId');
+
+                if (!campusSelect || !departmentSelect) {
+                    return;
+                }
+
+                var departmentOptions = Array.prototype.slice.call(departmentSelect.options);
+
+                function syncDepartmentsWithCampus() {
+                    var selectedCampusId = campusSelect.value;
+
+                    departmentOptions.forEach(function (option) {
+                        if (!option.value) {
+                            option.hidden = false;
+                            return;
+                        }
+
+                        var optionCampusId = option.getAttribute('data-campus-id');
+                        var shouldShow = !selectedCampusId || optionCampusId === selectedCampusId;
+
+                        option.hidden = !shouldShow;
+
+                        if (!shouldShow && option.selected) {
+                            departmentSelect.value = '';
+                        }
+                    });
+                }
+
+                campusSelect.addEventListener('change', syncDepartmentsWithCampus);
+                syncDepartmentsWithCampus();
+            });
+        </script>
+
+        <%- include('../../partials/footer') %>

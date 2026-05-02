@@ -1,0 +1,436 @@
+/* =========================================================
+   CoreSystem — Shell premium commun Admin / Professeur / Étudiant
+========================================================= */
+
+body.cs-admin-shell-body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(circle at 15% 0%, rgba(79, 70, 229, 0.10), transparent 32rem),
+        var(--cs-bg, #f4f6fb);
+    color: var(--cs-text, #101828);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow-x: hidden;
+}
+
+body.cs-admin-shell-body * {
+    box-sizing: border-box;
+}
+
+.cs-admin-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1000;
+    width: 416px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 42px 24px 24px;
+    background: linear-gradient(180deg, #20242d 0%, #11151d 100%);
+    color: #ffffff;
+    overflow-y: auto;
+    box-shadow: 18px 0 55px rgba(15, 23, 42, 0.18);
+}
+
+.cs-admin-brand-link {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.cs-admin-brand-mark {
+    width: 68px;
+    height: 68px;
+    flex: 0 0 68px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    background: #ffffff;
+    color: #111318;
+    font-size: 23px;
+    font-weight: 950;
+    line-height: 1;
+    letter-spacing: -0.07em;
+}
+
+.cs-admin-brand-text {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.cs-admin-brand-text strong {
+    color: #ffffff;
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 950;
+    letter-spacing: -0.06em;
+}
+
+.cs-admin-brand-text small {
+    color: rgba(255, 255, 255, 0.66);
+    font-size: 18px;
+    font-weight: 760;
+}
+
+.cs-theme-toggle {
+    min-height: 62px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 950;
+}
+
+.cs-admin-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.cs-admin-nav-label {
+    margin: 22px 14px 10px;
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 16px;
+    font-weight: 950;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.cs-admin-nav-link {
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 24px;
+    border-radius: 18px;
+    color: rgba(255, 255, 255, 0.72);
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: 0.18s ease;
+}
+
+.cs-admin-nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cs-admin-nav-link span {
+    width: 28px;
+    display: grid;
+    place-items: center;
+    font-size: 21px;
+}
+
+.cs-admin-nav-link strong {
+    color: inherit;
+    font-size: 22px;
+    font-weight: 950;
+    letter-spacing: -0.035em;
+}
+
+.cs-admin-nav-link.is-active,
+.cs-admin-nav-link[aria-current="page"] {
+    color: #111318;
+    background: #ffffff;
+    border-color: #ffffff;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.23);
+}
+
+.cs-admin-nav-link.is-active *,
+.cs-admin-nav-link[aria-current="page"] * {
+    color: #111318;
+}
+
+.cs-admin-sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.cs-admin-sidebar-avatar {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #4f46e5, #2e90fa);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 950;
+}
+
+.cs-admin-sidebar-user strong {
+    display: block;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 950;
+}
+
+.cs-admin-sidebar-user span {
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.cs-admin-logout {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.20);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.cs-admin-main {
+    min-height: 100vh;
+    width: calc(100% - 416px);
+    margin-left: 416px;
+    padding: 34px 32px 42px;
+}
+
+.cs-admin-mobile-toggle,
+.cs-admin-sidebar-backdrop {
+    display: none;
+}
+
+/* Dark mode */
+:root[data-cs-theme="dark"] {
+    --cs-bg: #0f1218;
+    --cs-bg-soft: #151922;
+    --cs-surface: #171b24;
+    --cs-surface-soft: #1d2330;
+    --cs-text: #e5e7eb;
+    --cs-text-strong: #f8fafc;
+    --cs-muted: #98a2b3;
+    --cs-border: #293142;
+}
+
+:root[data-cs-theme="dark"] body.cs-admin-shell-body,
+:root[data-cs-theme="dark"] .cs-admin-main {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(79, 70, 229, 0.16), transparent 30rem),
+        #0f1218;
+}
+
+:root[data-cs-theme="dark"] .cs-admin-identity-bar,
+:root[data-cs-theme="dark"] .cs-admin-stat-card,
+:root[data-cs-theme="dark"] .cs-admin-module-card,
+:root[data-cs-theme="dark"] .cs-professor-assignment-row {
+    background: var(--cs-surface);
+    border-color: var(--cs-border);
+}
+
+@media (max-width: 1280px) {
+    .cs-admin-sidebar {
+        width: 340px;
+    }
+
+    .cs-admin-main {
+        width: calc(100% - 340px);
+        margin-left: 340px;
+        padding: 28px;
+    }
+
+    .cs-admin-nav-link strong {
+        font-size: 19px;
+    }
+}
+
+@media (max-width: 980px) {
+    .cs-admin-mobile-toggle {
+        position: fixed;
+        top: 14px;
+        left: 14px;
+        z-index: 1200;
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 16px;
+        color: #ffffff;
+        background: #111318;
+        font-size: 22px;
+        cursor: pointer;
+    }
+
+    .cs-admin-sidebar {
+        width: min(82vw, 340px);
+        transform: translateX(-110%);
+        transition: transform 0.24s ease;
+    }
+
+    body.cs-admin-nav-open .cs-admin-sidebar {
+        transform: translateX(0);
+    }
+
+    .cs-admin-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 990;
+        background: rgba(15, 23, 42, 0.48);
+    }
+
+    body.cs-admin-nav-open .cs-admin-sidebar-backdrop {
+        display: block;
+    }
+
+    .cs-admin-main {
+        width: 100%;
+        margin-left: 0;
+        padding: 78px 16px 28px;
+    }
+}
+/* =========================================================
+   FIX DÉFINITIF — Dropdown Actions positionné sous le bouton
+========================================================= */
+
+.cs-action-dropdown {
+    position: relative !important;
+    display: inline-flex !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    min-width: 150px !important;
+}
+
+.cs-action-dropdown summary {
+    min-height: 46px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 0 18px !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(79, 70, 229, 0.22) !important;
+    background: var(--cs-primary-soft, #eef2ff) !important;
+    color: var(--cs-primary, #4f46e5) !important;
+    font-size: 14px !important;
+    font-weight: 950 !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    white-space: nowrap !important;
+}
+
+.cs-action-dropdown summary::-webkit-details-marker {
+    display: none !important;
+}
+
+.cs-action-dropdown summary::after {
+    content: "⌄" !important;
+    font-size: 12px !important;
+    font-weight: 950 !important;
+    opacity: 0.75 !important;
+    margin-left: 4px !important;
+}
+
+.cs-action-dropdown[open] summary {
+    background: var(--cs-primary, #4f46e5) !important;
+    color: #ffffff !important;
+    border-color: var(--cs-primary, #4f46e5) !important;
+    box-shadow: 0 14px 28px rgba(79, 70, 229, 0.18) !important;
+}
+
+.cs-action-dropdown[open] summary::after {
+    content: "⌃" !important;
+}
+
+.cs-action-menu {
+    position: fixed !important;
+    inset: auto !important;
+    top: var(--cs-action-menu-top, -9999px) !important;
+    left: var(--cs-action-menu-left, -9999px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: 99999 !important;
+
+    min-width: var(--cs-action-menu-width, 220px) !important;
+    max-width: 280px !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+
+    display: none !important;
+    gap: 6px !important;
+    padding: 8px !important;
+
+    margin: 0 !important;
+    transform: none !important;
+
+    border-radius: 18px !important;
+    background: var(--cs-surface, #ffffff) !important;
+    border: 1px solid var(--cs-border, #e5e7eb) !important;
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.22) !important;
+}
+
+.cs-action-dropdown[open] .cs-action-menu {
+    display: grid !important;
+}
+
+.cs-action-menu a,
+.cs-action-menu button {
+    width: 100% !important;
+    min-height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+
+    padding: 0 12px !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+
+    color: var(--cs-text-strong, #0f172a) !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    text-align: left !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+.cs-action-menu a:hover,
+.cs-action-menu button:hover {
+    background: var(--cs-primary-soft, #eef2ff) !important;
+    color: var(--cs-primary, #4f46e5) !important;
+}
+
+.cs-action-menu form {
+    margin: 0 !important;
+}
+
+.cs-table td:last-child {
+    overflow: visible !important;
+    text-align: right !important;
+}
+
+:root[data-cs-theme="dark"] .cs-action-menu {
+    background: var(--cs-surface, #171b24) !important;
+    border-color: var(--cs-border, #293142) !important;
+    box-shadow: 0 24px 55px rgba(0, 0, 0, 0.42) !important;
+}
+
+:root[data-cs-theme="dark"] .cs-action-menu a,
+:root[data-cs-theme="dark"] .cs-action-menu button {
+    color: var(--cs-text-strong, #f8fafc) !important;
+}

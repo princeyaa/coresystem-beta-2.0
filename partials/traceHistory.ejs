@@ -1,0 +1,54 @@
+<% const safeTraceHistory=Array.isArray(traceHistory) ? traceHistory : []; const safeTraceLimit=typeof traceLimit
+    !=='undefined' && Number(traceLimit)> 0
+    ? Number(traceLimit)
+    : 5;
+
+    const visibleTraceHistory = safeTraceHistory.slice(0, safeTraceLimit);
+    %>
+
+    <% if (visibleTraceHistory.length) { %>
+        <section class="cs-trace-history" aria-label="Historique récent">
+            <div class="cs-trace-history-head">
+                <div>
+                    <h3>Historique récent</h3>
+                    <p>Dernières actions utiles sur ce module.</p>
+                </div>
+
+                <span>
+                    <%= visibleTraceHistory.length %>/<%= safeTraceLimit %>
+                </span>
+            </div>
+
+            <div class="cs-trace-history-list">
+                <% visibleTraceHistory.forEach((entry)=> { %>
+                    <article class="cs-trace-history-item">
+                        <div class="cs-trace-history-dot"></div>
+
+                        <div class="cs-trace-history-content">
+                            <strong>
+                                <%= entry.summary || 'Action enregistrée' %>
+                            </strong>
+
+                            <div>
+                                <span>
+                                    <%= entry.actorName || 'Système' %>
+                                </span>
+
+                                <% if (entry.actorRole) { %>
+                                    <span>
+                                        <%= helpers.formatEnumLabel(entry.actorRole) %>
+                                    </span>
+                                    <% } %>
+
+                                        <% if (entry.createdAt) { %>
+                                            <span>
+                                                <%= helpers.formatDateTime(entry.createdAt) %>
+                                            </span>
+                                            <% } %>
+                            </div>
+                        </div>
+                    </article>
+                    <% }) %>
+            </div>
+        </section>
+        <% } %>

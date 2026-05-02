@@ -1,0 +1,186 @@
+<%
+    var navSession = typeof session !== 'undefined' && session ? session : {};
+    var navCurrentPath = typeof currentPath !== 'undefined' && currentPath ? currentPath : '';
+
+    var isAdmin = Boolean(navSession.adminId);
+    var isProfessor = Boolean(navSession.professorId);
+    var isStudent = Boolean(navSession.userId);
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+
+    function cleanPath(value) {
+        return String(value || '').split('?')[0].replace(/\/+$/, '') || '/';
+    }
+
+    function activeClass(path) {
+        var current = cleanPath(navCurrentPath);
+        var target = cleanPath(path);
+
+        if (current === target || current.indexOf(target + '/') === 0) {
+            return 'is-active';
+        }
+
+        return '';
+    }
+
+    function initials(name, fallback) {
+        var value = safeText(name, fallback || 'CS').trim();
+        var parts = value.split(/\s+/).filter(Boolean);
+
+        if (parts.length >= 2) {
+            return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+        }
+
+        return value.slice(0, 2).toUpperCase() || fallback || 'CS';
+    }
+
+    var portalTitle = 'Administration';
+    var userName = 'Utilisateur';
+    var userRole = 'PORTAIL';
+    var userInitials = 'CS';
+    var homeHref = '/';
+    var logoutHref = '/logout';
+    var mainLinks = [];
+    var configLinks = [];
+
+    if (isAdmin) {
+        portalTitle = 'Administration';
+        userName = safeText(navSession.adminName, 'Administrateur');
+        userRole = safeText(navSession.adminRole, 'ADMIN');
+        userInitials = initials(userName, 'AD');
+        homeHref = '/admin/dashboard';
+        logoutHref = '/admin/logout';
+
+        mainLinks = [
+            { href: '/admin/dashboard', label: 'Tableau de bord', icon: '🏠', match: '/admin/dashboard' },
+            { href: '/admin/students', label: 'Étudiants', icon: '🎓', match: '/admin/students' },
+            { href: '/admin/professors', label: 'Professeurs', icon: '👨‍🏫', match: '/admin/professors' },
+            { href: '/admin/classes', label: 'Classes', icon: '🏫', match: '/admin/classes' },
+            { href: '/admin/assignments', label: 'Affectations', icon: '🧩', match: '/admin/assignments' },
+            { href: '/admin/grades', label: 'Notes', icon: '📊', match: '/admin/grades' },
+            { href: '/admin/requests', label: 'Demandes', icon: '📩', match: '/admin/requests' },
+            { href: '/admin/announcements', label: 'Annonces', icon: '📢', match: '/admin/announcements' },
+            { href: '/admin/courses', label: 'Cours', icon: '📚', match: '/admin/courses' },
+            { href: '/admin/schedules', label: 'Créneaux', icon: '🗓️', match: '/admin/schedules' },
+            { href: '/admin/search', label: 'Recherche', icon: '🔎', match: '/admin/search' }
+        ];
+
+        if (navSession.adminRole === 'SUPER_ADMIN') {
+            configLinks = [
+                { href: '/admin/campuses', label: 'Campus', icon: '🏛️', match: '/admin/campuses' },
+                { href: '/admin/departments', label: 'Départements', icon: '🏢', match: '/admin/departments' },
+                { href: '/admin/programs', label: 'Programmes', icon: '🧭', match: '/admin/programs' },
+                { href: '/admin/users', label: 'Utilisateurs', icon: '👤', match: '/admin/users' }
+            ];
+        }
+    }
+
+    if (isProfessor) {
+        portalTitle = 'Portail professeur';
+        userName = safeText(navSession.professorName, 'Professeur');
+        userRole = 'PROFESSEUR';
+        userInitials = initials(userName, 'PR');
+        homeHref = '/professor/dashboard';
+        logoutHref = '/professor/logout';
+
+        mainLinks = [
+            { href: '/professor/dashboard', label: 'Tableau de bord', icon: '🏠', match: '/professor/dashboard' },
+            { href: '/professor/assignments', label: 'Affectations', icon: '📚', match: '/professor/assignments' },
+            { href: '/professor/assignments', label: 'Notes', icon: '📊', match: '/professor/assignments', contains: '/grades' }
+        ];
+    }
+
+    if (isStudent) {
+        portalTitle = 'Portail étudiant';
+        userName = safeText(navSession.studentName, 'Étudiant');
+        userRole = 'ÉTUDIANT';
+        userInitials = initials(userName, 'ET');
+        homeHref = '/dashboard';
+        logoutHref = '/logout';
+
+        mainLinks = [
+            { href: '/dashboard', label: 'Tableau de bord', icon: '🏠', match: '/dashboard' },
+            { href: '/notes', label: 'Notes', icon: '📊', match: '/notes' },
+            { href: '/schedule', label: 'Emploi du temps', icon: '🗓️', match: '/schedule' },
+            { href: '/requests', label: 'Demandes', icon: '📩', match: '/requests' },
+            { href: '/announcements', label: 'Annonces', icon: '📢', match: '/announcements' },
+            { href: '/courses', label: 'Cours', icon: '📚', match: '/courses' }
+        ];
+    }
+%>
+
+<button class="cs-admin-mobile-toggle" type="button" id="csAdminMenuToggle" aria-label="Ouvrir le menu">
+    ☰
+</button>
+
+<div class="cs-admin-sidebar-backdrop" id="csAdminSidebarBackdrop"></div>
+
+<aside class="cs-admin-sidebar">
+    <div class="cs-admin-brand">
+        <a class="cs-admin-brand-link" href="<%= homeHref %>">
+            <span class="cs-admin-brand-mark">CS</span>
+
+            <span class="cs-admin-brand-text">
+                <strong>CoreSystem</strong>
+                <small><%= portalTitle %></small>
+            </span>
+        </a>
+    </div>
+
+    <button class="cs-theme-toggle" type="button" id="csThemeToggle">
+        <span class="cs-theme-icon">🌙</span>
+        <span class="cs-theme-label">Mode sombre</span>
+    </button>
+
+    <nav class="cs-admin-nav">
+        <span class="cs-admin-nav-label">Principal</span>
+
+        <% mainLinks.forEach(function(link) { %>
+            <a
+                class="cs-admin-nav-link <%= activeClass(link.match) %>"
+                href="<%= link.href %>"
+                data-admin-path="<%= link.match %>"
+                <% if (link.contains) { %> data-active-contains="<%= link.contains %>" <% } %>
+            >
+                <span><%= link.icon %></span>
+                <strong><%= link.label %></strong>
+            </a>
+        <% }) %>
+
+        <% if (configLinks.length) { %>
+            <span class="cs-admin-nav-label">Configuration</span>
+
+            <% configLinks.forEach(function(link) { %>
+                <a
+                    class="cs-admin-nav-link <%= activeClass(link.match) %>"
+                    href="<%= link.href %>"
+                    data-admin-path="<%= link.match %>"
+                >
+                    <span><%= link.icon %></span>
+                    <strong><%= link.label %></strong>
+                </a>
+            <% }) %>
+        <% } %>
+    </nav>
+
+    <div class="cs-admin-sidebar-user">
+        <div class="cs-admin-sidebar-avatar">
+            <%= userInitials %>
+        </div>
+
+        <div>
+            <strong><%= userName %></strong>
+            <span><%= userRole %></span>
+        </div>
+    </div>
+
+    <a class="cs-admin-logout" href="<%= logoutHref %>">
+        Déconnexion
+    </a>
+</aside>

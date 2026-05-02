@@ -1,0 +1,263 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Étudiant' , session: typeof
+    session !=='undefined' ? session : null }) %>
+
+    <% var safeStudent=typeof student !=='undefined' && student ? student : {}; var safePrograms=Array.isArray(programs)
+        ? programs : []; var safeClasses=Array.isArray(classes) ? classes : []; var isEdit=Boolean(safeStudent &&
+        safeStudent.id); var backUrl=isEdit ? '/admin/students/' + safeStudent.id : '/admin/students' ; function
+        safeText(value, fallback) { if (value===null || typeof value==='undefined' || value==='' ) { return fallback
+        || '' ; } return value; } function selected(value, expected) { return String(value || '' )===String(expected
+        || '' ) ? 'selected' : '' ; } function classLabel(academicClass) { if (!academicClass) return 'Classe' ; var
+        parts=[]; if (academicClass.nom) parts.push(academicClass.nom); if (academicClass.academicYear)
+        parts.push(academicClass.academicYear); if (academicClass.campus && academicClass.campus.nom)
+        parts.push(academicClass.campus.nom); if (academicClass.department && academicClass.department.nom)
+        parts.push(academicClass.department.nom); return parts.join(' — ');
+    }
+
+    function programLabel(program) {
+        if (!program) return ' Programme'; return [ program.filiere || '' , program.niveau || '' ].join(' ').trim();
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        ← <%= isEdit ? ' Retour à la fiche étudiant' : 'Retour aux étudiants' %>
+        </a>
+        </div>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Étudiants</span>
+
+                <h1>
+                    <%= pageTitle || (isEdit ? 'Modifier un étudiant' : 'Nouvel étudiant' ) %>
+                </h1>
+
+                <p>
+                    Renseignez les informations du compte étudiant et son rattachement académique.
+                    La classe sélectionnée reste limitée au périmètre autorisé de l’administrateur connecté.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <% if (isEdit) { %>
+                    <a class="btn btn-secondary" href="/admin/students/<%= safeStudent.id %>">
+                        Voir la fiche
+                    </a>
+                    <% } %>
+
+                        <a class="btn btn-secondary" href="/admin/students">
+                            Liste étudiants
+                        </a>
+            </div>
+        </section>
+
+        <% if (typeof error !=='undefined' && error) { %>
+            <div class="alert alert-error">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form class="cs-student-form" method="POST" action="<%= formAction %>">
+                    <%- include('../../partials/csrf') %>
+
+                        <section class="cs-form-layout">
+                            <div class="cs-form-main">
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Identité étudiant</h2>
+                                            <p>Informations principales du dossier étudiant.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-form-grid">
+                                        <div class="cs-form-field">
+                                            <label for="matricule">Matricule *</label>
+                                            <input id="matricule" name="matricule" type="text"
+                                                value="<%= safeText(safeStudent.matricule, '') %>"
+                                                placeholder="Ex : 2021001" autocomplete="off" required>
+                                            <p>Identifiant académique unique de l’étudiant.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="prenom">Prénom *</label>
+                                            <input id="prenom" name="prenom" type="text"
+                                                value="<%= safeText(safeStudent.prenom, '') %>" placeholder="Ex : Fatou"
+                                                autocomplete="off" required>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="nom">Nom *</label>
+                                            <input id="nom" name="nom" type="text"
+                                                value="<%= safeText(safeStudent.nom, '') %>" placeholder="Ex : Keita"
+                                                autocomplete="off" required>
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Contact</h2>
+                                            <p>Coordonnées utiles pour le portail, les notifications et le suivi
+                                                administratif.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-form-grid cs-form-grid-2">
+                                        <div class="cs-form-field">
+                                            <label for="email">Email</label>
+                                            <input id="email" name="email" type="email"
+                                                value="<%= safeText(safeStudent.email, '') %>"
+                                                placeholder="exemple@email.com" autocomplete="off">
+                                            <p>L’email reste optionnel pour le dossier, mais utile pour les
+                                                notifications futures.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="telephone">Téléphone</label>
+                                            <input id="telephone" name="telephone" type="text"
+                                                value="<%= safeText(safeStudent.telephone, '') %>"
+                                                placeholder="Ex : 620000000" autocomplete="off">
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Inscription actuelle</h2>
+                                            <p>Rattachement de l’étudiant à une année, un programme et une classe.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-form-grid">
+                                        <div class="cs-form-field">
+                                            <label for="academicYear">Année universitaire *</label>
+                                            <input id="academicYear" name="academicYear" type="text"
+                                                value="<%= safeText(safeStudent.academicYear, '2025-2026') %>"
+                                                placeholder="Ex : 2025-2026" autocomplete="off" required>
+                                            <p>Format conseillé : 2025-2026.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="programId">Programme *</label>
+                                            <select id="programId" name="programId" required>
+                                                <option value="">Choisir un programme</option>
+
+                                                <% safePrograms.forEach(function(program) { %>
+                                                    <option value="<%= program.id %>" <%=selected(safeStudent.programId,
+                                                        program.id) %>
+                                                        >
+                                                        <%= programLabel(program) %>
+                                                    </option>
+                                                    <% }) %>
+                                            </select>
+                                            <p>Le programme correspond à la filière et au niveau.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="classId">Classe *</label>
+                                            <select id="classId" name="classId" required>
+                                                <option value="">Choisir une classe</option>
+
+                                                <% safeClasses.forEach(function(academicClass) { %>
+                                                    <option value="<%= academicClass.id %>"
+                                                        data-program-id="<%= academicClass.programId || '' %>"
+                                                        data-campus="<%= academicClass.campus ? academicClass.campus.nom : '' %>"
+                                                        data-department="<%= academicClass.department ? academicClass.department.nom : '' %>"
+                                                        <%=selected(safeStudent.classId, academicClass.id) %>
+                                                        >
+                                                        <%= classLabel(academicClass) %>
+                                                    </option>
+                                                    <% }) %>
+                                            </select>
+                                            <p>La liste est déjà limitée au campus autorisé côté serveur.</p>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <aside class="cs-form-side">
+                                <article class="cs-form-help-card">
+                                    <div class="cs-form-help-icon">🎓</div>
+
+                                    <h2>
+                                        <%= isEdit ? 'Modification étudiant' : 'Création étudiant' %>
+                                    </h2>
+
+                                    <% if (isEdit) { %>
+                                        <p>
+                                            Les modifications mettent à jour le dossier étudiant et son inscription
+                                            actuelle.
+                                            Les changements sensibles sont tracés dans l’audit.
+                                        </p>
+                                        <% } else { %>
+                                            <p>
+                                                À la création, CoreSystem génère un mot de passe temporaire.
+                                                L’admin doit le transmettre à l’étudiant selon la procédure retenue.
+                                            </p>
+                                            <% } %>
+                                </article>
+
+                                <article class="cs-form-help-card">
+                                    <div class="cs-form-help-icon">🏫</div>
+
+                                    <h2>Règle de campus</h2>
+
+                                    <p>
+                                        Un ADMIN_CAMPUS ne doit gérer que les étudiants rattachés à son campus.
+                                        Le SUPER_ADMIN conserve une vision globale.
+                                    </p>
+                                </article>
+
+                                <article class="cs-form-actions-card">
+                                    <button class="btn btn-primary" type="submit">
+                                        <%= submitLabel || (isEdit ? 'Enregistrer' : 'Créer l’étudiant' ) %>
+                                    </button>
+
+                                    <a class="btn btn-secondary" href="<%= backUrl %>">
+                                        Annuler
+                                    </a>
+                                </article>
+                            </aside>
+                        </section>
+                </form>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const programSelect = document.getElementById('programId');
+                        const classSelect = document.getElementById('classId');
+
+                        if (!programSelect || !classSelect) {
+                            return;
+                        }
+
+                        const classOptions = Array.from(classSelect.options);
+
+                        function syncClassesWithProgram() {
+                            const selectedProgramId = programSelect.value;
+
+                            classOptions.forEach(function (option) {
+                                if (!option.value) {
+                                    option.hidden = false;
+                                    return;
+                                }
+
+                                const optionProgramId = option.getAttribute('data-program-id');
+                                const shouldShow = !selectedProgramId || optionProgramId === selectedProgramId;
+
+                                option.hidden = !shouldShow;
+
+                                if (!shouldShow && option.selected) {
+                                    classSelect.value = '';
+                                }
+                            });
+                        }
+
+                        programSelect.addEventListener('change', syncClassesWithProgram);
+                        syncClassesWithProgram();
+                    });
+                </script>
+
+                <%- include('../../partials/footer') %>

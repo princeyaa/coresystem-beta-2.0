@@ -1,0 +1,486 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Fiche classe' , session:
+    typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeClass=typeof academicClass !=='undefined' && academicClass ? academicClass : {}; var
+        enrollments=Array.isArray(safeClass.enrollments) ? safeClass.enrollments : []; var
+        assignments=Array.isArray(safeClass.teachingAssignments) ? safeClass.teachingAssignments : []; var
+        grades=Array.isArray(recentGrades) ? recentGrades : []; var campus=safeClass.campus || null; var
+        department=safeClass.department || null; var program=safeClass.program || null; var
+        visibleEnrollments=enrollments.slice(0, 8); var visibleAssignments=assignments.slice(0, 8); var
+        visibleGrades=grades.slice(0, 8); var uniqueCourseIds=new Set(); var uniqueProfessorIds=new Set(); var
+        publishedGrades=grades.filter(function(grade) { return grade.published; });
+        assignments.forEach(function(assignment) { if (assignment.courseId) uniqueCourseIds.add(assignment.courseId); if
+        (assignment.professorId) uniqueProfessorIds.add(assignment.professorId); }); function safeText(value, fallback)
+        { if (value===null || typeof value==='undefined' || value==='' ) { return fallback || '-' ; } return value; }
+        function classInitials(academicClass) { if (!academicClass || !academicClass.nom) return 'CL' ; return
+        String(academicClass.nom) .split(' ')
+            .map(function(part) { return part.charAt(0); })
+            .join('')
+            .slice(0, 3)
+            .toUpperCase() || ' CL'; } function studentInitials(student) { if (!student) return 'ET' ; var
+        prenom=student.prenom ? String(student.prenom).charAt(0) : '' ; var nom=student.nom ?
+        String(student.nom).charAt(0) : '' ; return (prenom + nom).toUpperCase() || 'ET' ; } function
+        professorInitials(professor) { if (!professor) return 'PR' ; var prenom=professor.prenom ?
+        String(professor.prenom).charAt(0) : '' ; var nom=professor.nom ? String(professor.nom).charAt(0) : '' ; return
+        (prenom + nom).toUpperCase() || 'PR' ; } function gradeValueClass(value) { var numberValue=Number(value); if
+        (!Number.isFinite(numberValue)) return '' ; return numberValue>= 10 ? 'is-good' : 'is-low';
+        }
+
+        function gradeBadgeClass(grade) {
+        return grade && grade.published ? 'badge-success' : 'badge-warning';
+        }
+
+        function gradeStatusLabel(grade) {
+        return grade && grade.published ? 'Publiée' : 'Brouillon';
+        }
+
+        var classLabel = safeText(safeClass.nom, 'Classe');
+        var classCode = safeText(safeClass.code, 'Code non défini');
+        var campusLabel = campus ? safeText(campus.nom, '-') : 'Campus non défini';
+        var departmentLabel = department ? safeText(department.nom, '-') : 'Département non défini';
+        var programLabel = program
+        ? (safeText(program.filiere, '') + ' ' + safeText(program.niveau, '')).trim()
+        : 'Programme non défini';
+        %>
+
+        <div class="cs-back-row">
+            <a class="cs-back-link" href="/admin/classes">
+                ← Retour aux classes
+            </a>
+        </div>
+
+        <section class="cs-class-hub-hero">
+            <div class="cs-class-hub-identity">
+                <div class="cs-class-hub-avatar">
+                    <%= classInitials(safeClass) %>
+                </div>
+
+                <div class="cs-class-hub-main">
+                    <span class="page-kicker">Module Classes</span>
+
+                    <h1>
+                        <%= classLabel %>
+                    </h1>
+
+                    <p>
+                        <strong>
+                            <%= classCode %>
+                        </strong>
+                        • <%= safeText(safeClass.academicYear, 'Année non définie' ) %>
+                            • <%= campusLabel %>
+                    </p>
+
+                    <div class="cs-context-pill-row">
+                        <span class="cs-context-pill">
+                            Programme : <strong>
+                                <%= programLabel %>
+                            </strong>
+                        </span>
+
+                        <span class="cs-context-pill">
+                            Département : <strong>
+                                <%= departmentLabel %>
+                            </strong>
+                        </span>
+
+                        <span class="cs-context-pill">
+                            Campus : <strong>
+                                <%= campusLabel %>
+                            </strong>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cs-class-hub-actions">
+                <a class="btn btn-secondary" href="/admin/classes/<%= safeClass.id %>/edit">
+                    Modifier
+                </a>
+
+                <details class="cs-action-dropdown">
+                    <summary>Actions</summary>
+
+                    <div class="cs-action-menu">
+                        <a href="/admin/students?classId=<%= safeClass.id %>">
+                            Voir les étudiants
+                        </a>
+
+                        <a href="/admin/assignments?classId=<%= safeClass.id %>">
+                            Voir les affectations
+                        </a>
+
+                        <a href="/admin/grades?classId=<%= safeClass.id %>">
+                            Voir les notes
+                        </a>
+
+                        <a href="/admin/grades/import?classId=<%= safeClass.id %>">
+                            Importer des notes
+                        </a>
+
+                        <form method="POST" action="/admin/classes/<%= safeClass.id %>/delete">
+                            <%- include('../../partials/csrf') %>
+
+                                <button class="cs-danger-action" type="submit"
+                                    data-confirm="Supprimer cette classe ? La suppression sera bloquée si elle possède des étudiants ou des affectations.">
+                                    Supprimer
+                                </button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">🎓</div>
+                <div>
+                    <strong>
+                        <%= enrollments.length %>
+                    </strong>
+                    <span>Étudiants inscrits</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">👨‍🏫</div>
+                <div>
+                    <strong>
+                        <%= uniqueProfessorIds.size %>
+                    </strong>
+                    <span>Professeurs liés</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">📚</div>
+                <div>
+                    <strong>
+                        <%= uniqueCourseIds.size %>
+                    </strong>
+                    <span>Matières liées</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">✅</div>
+                <div>
+                    <strong>
+                        <%= publishedGrades.length %>
+                    </strong>
+                    <span>Notes publiées récentes</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-class-module-grid">
+            <a class="cs-class-module-card" href="/admin/students?classId=<%= safeClass.id %>">
+                <div class="cs-class-module-icon">🎓</div>
+                <div>
+                    <h2>Étudiants</h2>
+                    <p>Consulter les étudiants rattachés à cette classe.</p>
+                </div>
+                <span>Ouvrir →</span>
+            </a>
+
+            <a class="cs-class-module-card" href="/admin/assignments?classId=<%= safeClass.id %>">
+                <div class="cs-class-module-icon">🧩</div>
+                <div>
+                    <h2>Affectations</h2>
+                    <p>Voir les professeurs, cours et affectations de la classe.</p>
+                </div>
+                <span>Ouvrir →</span>
+            </a>
+
+            <a class="cs-class-module-card" href="/admin/grades?classId=<%= safeClass.id %>">
+                <div class="cs-class-module-icon">📊</div>
+                <div>
+                    <h2>Notes</h2>
+                    <p>Suivre les notes publiées, brouillons et imports.</p>
+                </div>
+                <span>Ouvrir →</span>
+            </a>
+
+            <a class="cs-class-module-card" href="/admin/grades/import?classId=<%= safeClass.id %>">
+                <div class="cs-class-module-icon">📥</div>
+                <div>
+                    <h2>Import notes</h2>
+                    <p>Importer les notes par fichier avec preview et rapport.</p>
+                </div>
+                <span>Ouvrir →</span>
+            </a>
+
+            <a class="cs-class-module-card is-muted" href="/admin/schedules">
+                <div class="cs-class-module-icon">🗓️</div>
+                <div>
+                    <h2>Emploi du temps</h2>
+                    <p>Bloc à structurer ensuite par année, classe et semaine.</p>
+                </div>
+                <span>Préparer →</span>
+            </a>
+        </section>
+
+        <section class="cs-class-layout">
+            <div class="cs-class-main">
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>Étudiants de la classe</h2>
+                            <p>Liste courte. Le détail complet reste dans le module Étudiants.</p>
+                        </div>
+
+                        <a href="/admin/students?classId=<%= safeClass.id %>">Voir tout</a>
+                    </div>
+
+                    <% if (!visibleEnrollments.length) { %>
+                        <div class="empty-state compact">
+                            Aucun étudiant rattaché à cette classe.
+                        </div>
+                        <% } else { %>
+                            <div class="cs-class-people-list">
+                                <% visibleEnrollments.forEach(function(enrollment) { var student=enrollment.student ||
+                                    null; var traceMeta=student && studentTraceMap ? studentTraceMap[student.id] : null;
+                                    %>
+                                    <article class="cs-class-person-row">
+                                        <div class="cs-class-person-avatar">
+                                            <%= studentInitials(student) %>
+                                        </div>
+
+                                        <div class="cs-class-person-main">
+                                            <% if (student) { %>
+                                                <a href="/admin/students/<%= student.id %>">
+                                                    <%= safeText(student.prenom, '' ) %>
+                                                        <%= safeText(student.nom, '' ) %>
+                                                </a>
+
+                                                <span>
+                                                    Matricule : <%= safeText(student.matricule, '-' ) %>
+                                                        • <%= safeText(enrollment.academicYear, '-' ) %>
+                                                </span>
+
+                                                <% if (traceMeta && traceMeta.summary) { %>
+                                                    <small>
+                                                        <%= traceMeta.summary %>
+                                                    </small>
+                                                    <% } %>
+                                                        <% } else { %>
+                                                            <strong>Étudiant introuvable</strong>
+                                                            <span>Dossier non disponible</span>
+                                                            <% } %>
+                                        </div>
+                                    </article>
+                                    <% }) %>
+                            </div>
+                            <% } %>
+                </article>
+
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>Affectations pédagogiques</h2>
+                            <p>Professeurs, matières et année universitaire liés à cette classe.</p>
+                        </div>
+
+                        <a href="/admin/assignments?classId=<%= safeClass.id %>">Voir tout</a>
+                    </div>
+
+                    <% if (!visibleAssignments.length) { %>
+                        <div class="empty-state compact">
+                            Aucune affectation trouvée pour cette classe.
+                        </div>
+                        <% } else { %>
+                            <div class="cs-class-assignment-list">
+                                <% visibleAssignments.forEach(function(assignment) { var professor=assignment.professor
+                                    || null; var course=assignment.course || null; var traceMeta=assignmentTraceMap ?
+                                    assignmentTraceMap[assignment.id] : null; %>
+                                    <article class="cs-class-assignment-row">
+                                        <div class="cs-class-person-avatar is-professor">
+                                            <%= professorInitials(professor) %>
+                                        </div>
+
+                                        <div class="cs-class-person-main">
+                                            <% if (professor) { %>
+                                                <a href="/admin/professors/<%= professor.id %>">
+                                                    <%= safeText(professor.prenom, '' ) %>
+                                                        <%= safeText(professor.nom, '' ) %>
+                                                </a>
+                                                <% } else { %>
+                                                    <strong>Professeur non défini</strong>
+                                                    <% } %>
+
+                                                        <span>
+                                                            <%= course ? safeText(course.code, '-' ) + ' — ' +
+                                                                safeText(course.nom, '-' ) : 'Cours non défini' %>
+                                                        </span>
+
+                                                        <small>
+                                                            Année : <%= safeText(assignment.academicYear, '-' ) %>
+                                                                <% if (traceMeta && traceMeta.summary) { %>
+                                                                    • <%= traceMeta.summary %>
+                                                                        <% } %>
+                                                        </small>
+                                        </div>
+                                    </article>
+                                    <% }) %>
+                            </div>
+                            <% } %>
+                </article>
+
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>Notes récentes</h2>
+                            <p>Dernières notes liées aux étudiants de cette classe.</p>
+                        </div>
+
+                        <a href="/admin/grades?classId=<%= safeClass.id %>">Voir tout</a>
+                    </div>
+
+                    <% if (!visibleGrades.length) { %>
+                        <div class="empty-state compact">
+                            Aucune note récente trouvée pour cette classe.
+                        </div>
+                        <% } else { %>
+                            <div class="cs-class-grade-list">
+                                <% visibleGrades.forEach(function(grade) { var student=grade.student || null; var
+                                    course=grade.course || null; var traceMeta=gradeTraceMap ? gradeTraceMap[grade.id] :
+                                    null; %>
+                                    <article class="cs-class-grade-row">
+                                        <div>
+                                            <% if (student) { %>
+                                                <a href="/admin/students/<%= student.id %>">
+                                                    <%= safeText(student.prenom, '' ) %>
+                                                        <%= safeText(student.nom, '' ) %>
+                                                </a>
+                                                <% } else { %>
+                                                    <strong>Étudiant non défini</strong>
+                                                    <% } %>
+
+                                                        <span>
+                                                            <%= course ? safeText(course.code, '-' ) + ' — ' +
+                                                                safeText(course.nom, '-' ) : 'Cours non défini' %>
+                                                                • <%= helpers.formatEnumLabel(grade.typeEvaluation) %>
+                                                        </span>
+
+                                                        <% if (traceMeta && traceMeta.summary) { %>
+                                                            <small>
+                                                                <%= traceMeta.summary %>
+                                                            </small>
+                                                            <% } %>
+                                        </div>
+
+                                        <div class="cs-class-grade-end">
+                                            <strong class="cs-grade-value-small <%= gradeValueClass(grade.valeur) %>">
+                                                <%= safeText(grade.valeur, '-' ) %>/20
+                                            </strong>
+
+                                            <span class="badge <%= gradeBadgeClass(grade) %>">
+                                                <%= gradeStatusLabel(grade) %>
+                                            </span>
+                                        </div>
+                                    </article>
+                                    <% }) %>
+                            </div>
+                            <% } %>
+                </article>
+            </div>
+
+            <aside class="cs-class-side">
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>Informations classe</h2>
+                            <p>Contexte académique principal.</p>
+                        </div>
+                    </div>
+
+                    <div class="cs-info-list">
+                        <div>
+                            <span>Nom</span>
+                            <strong>
+                                <%= classLabel %>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Code</span>
+                            <strong>
+                                <%= classCode %>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Année universitaire</span>
+                            <strong>
+                                <%= safeText(safeClass.academicYear, '-' ) %>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Programme</span>
+                            <strong>
+                                <%= programLabel %>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Campus</span>
+                            <strong>
+                                <%= campusLabel %>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Département</span>
+                            <strong>
+                                <%= departmentLabel %>
+                            </strong>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>Traçabilité</h2>
+                            <p>Dernière action enregistrée sur cette classe.</p>
+                        </div>
+                    </div>
+
+                    <% if (classTraceMeta) { %>
+                        <%- include('../../partials/traceMeta', { traceMeta: classTraceMeta }) %>
+                            <% } else { %>
+                                <div class="empty-state compact">
+                                    Aucune trace récente sur cette classe.
+                                </div>
+                                <% } %>
+                </article>
+
+                <article class="cs-profile-card">
+                    <div class="cs-profile-card-head">
+                        <div>
+                            <h2>À structurer ensuite</h2>
+                            <p>Ces blocs doivent attendre les modules métier dédiés.</p>
+                        </div>
+                    </div>
+
+                    <div class="cs-class-coming-list">
+                        <div>
+                            <strong>Emploi du temps V2</strong>
+                            <span>Année → classe → semaine → créneaux.</span>
+                        </div>
+
+                        <div>
+                            <strong>Paiements</strong>
+                            <span>Montant dû, payé, reste, statut et historique.</span>
+                        </div>
+
+                        <div>
+                            <strong>Statistiques classe</strong>
+                            <span>Filles/garçons seulement quand le champ sexe existera.</span>
+                        </div>
+                    </div>
+                </article>
+            </aside>
+        </section>
+
+        <%- include('../../partials/footer') %>

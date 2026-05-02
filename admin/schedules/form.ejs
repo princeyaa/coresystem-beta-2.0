@@ -1,0 +1,379 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Créneau',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var s = typeof schedule !== 'undefined' && schedule ? schedule : {};
+    var safeCourses = Array.isArray(courses) ? courses : [];
+    var safeDays = Array.isArray(allowedDays) ? allowedDays : ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI'];
+    var safeStatuses = Array.isArray(allowedStatuses) ? allowedStatuses : ['NORMAL', 'MODIFIE', 'ANNULE'];
+
+    var isEdit = Boolean(s && s.id);
+    var backUrl = '/admin/schedules';
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+
+    function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+    }
+
+    function enumLabel(value) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(value);
+        }
+
+        return safeText(value, '-');
+    }
+
+    function courseLabel(course) {
+        if (!course) return 'Cours';
+
+        var label = [
+            course.code || '',
+            course.nom || ''
+        ].join(' - ').trim();
+
+        if (course.program) {
+            label += ' (' + safeText(course.program.filiere, '') + ' ' + safeText(course.program.niveau, '') + ')';
+        }
+
+        return label || 'Cours';
+    }
+
+    function programLabel(course) {
+        if (!course || !course.program) {
+            return 'Programme non défini';
+        }
+
+        return [
+            course.program.filiere || '',
+            course.program.niveau || ''
+        ].join(' ').trim() || 'Programme non défini';
+    }
+
+    var currentCourseId = safeText(s.courseId, '');
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        &larr; Retour aux créneaux
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Emploi du temps</span>
+
+        <h1><%= pageTitle || (isEdit ? 'Modifier le créneau' : 'Nouveau créneau') %></h1>
+
+        <p>
+            Créez ou modifiez un créneau en indiquant le jour, l'heure, le cours,
+            la salle et le statut. La version actuelle reste rattachée au cours.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/schedules">
+            Liste des créneaux
+        </a>
+
+        <a class="btn btn-secondary" href="/admin/courses">
+            Voir les cours
+        </a>
+    </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+        <%= error %>
+    </div>
+<% } %>
+
+<form class="cs-schedule-form" method="POST" action="<%= formAction %>">
+    <%- include('../../partials/csrf') %>
+
+    <section class="cs-form-layout">
+        <div class="cs-form-main">
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Jour et horaire</h2>
+                        <p>Définissez le jour, l'heure de début et l'heure de fin du créneau.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid">
+                    <div class="cs-form-field">
+                        <label for="jour">Jour *</label>
+
+                        <select id="jour" name="jour" required>
+                            <option value="">Sélectionner un jour</option>
+
+                            <% safeDays.forEach(function(day) { %>
+                                <option value="<%= day %>" <%= selected(s.jour, day) %>>
+                                    <%= enumLabel(day) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="heureDebut">Heure de début *</label>
+
+                        <input
+                            id="heureDebut"
+                            name="heureDebut"
+                            type="time"
+                            value="<%= safeText(s.heureDebut, '') %>"
+                            required
+                        >
+
+                        <p>Exemple : 08:00.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="heureFin">Heure de fin *</label>
+
+                        <input
+                            id="heureFin"
+                            name="heureFin"
+                            type="time"
+                            value="<%= safeText(s.heureFin, '') %>"
+                            required
+                        >
+
+                        <p>Exemple : 10:00.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Cours et lieu</h2>
+                        <p>Rattachez le créneau à un cours et précisez la salle.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid">
+                    <div class="cs-form-field cs-schedule-course-field">
+                        <label for="courseId">Cours *</label>
+
+                        <select id="courseId" name="courseId" required>
+                            <option value="">Sélectionner un cours</option>
+
+                            <% safeCourses.forEach(function(course) { %>
+                                <option
+                                    value="<%= course.id %>"
+                                    data-program-label="<%= programLabel(course) %>"
+                                    data-course-code="<%= safeText(course.code, '') %>"
+                                    data-course-name="<%= safeText(course.nom, '') %>"
+                                    <%= selected(currentCourseId, course.id) %>
+                                >
+                                    <%= courseLabel(course) %>
+                                </option>
+                            <% }) %>
+                        </select>
+
+                        <p>
+                            Le créneau est actuellement rattaché au cours. La liaison directe classe/semaine sera une évolution métier séparée.
+                        </p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="salle">Salle</label>
+
+                        <input
+                            id="salle"
+                            name="salle"
+                            type="text"
+                            value="<%= safeText(s.salle, '') %>"
+                            placeholder="Ex : Salle B12"
+                            autocomplete="off"
+                        >
+
+                        <p>Facultatif, mais recommandé pour l'affichage étudiant.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="statut">Statut *</label>
+
+                        <select id="statut" name="statut" required>
+                            <% safeStatuses.forEach(function(status) { %>
+                                <option value="<%= status %>" <%= selected(s.statut || 'NORMAL', status) %>>
+                                    <%= enumLabel(status) %>
+                                </option>
+                            <% }) %>
+                        </select>
+
+                        <p>Utilisez “modifié” ou “annulé” seulement si nécessaire.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Résumé avant validation</h2>
+                        <p>Vérifiez le créneau avant d'enregistrer.</p>
+                    </div>
+                </div>
+
+                <div class="cs-schedule-preview">
+                    <div>
+                        <span>Jour</span>
+                        <strong data-preview="jour">Non défini</strong>
+                    </div>
+
+                    <div>
+                        <span>Horaire</span>
+                        <strong data-preview="horaire">Non défini</strong>
+                    </div>
+
+                    <div>
+                        <span>Cours</span>
+                        <strong data-preview="course">À sélectionner</strong>
+                    </div>
+
+                    <div>
+                        <span>Programme</span>
+                        <strong data-preview="program">Programme non défini</strong>
+                    </div>
+
+                    <div>
+                        <span>Salle</span>
+                        <strong data-preview="salle">Salle non définie</strong>
+                    </div>
+
+                    <div>
+                        <span>Statut</span>
+                        <strong data-preview="statut">Normal</strong>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="cs-form-side">
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">ED</div>
+
+                <h2>
+                    <%= isEdit ? 'Modification créneau' : 'Création créneau' %>
+                </h2>
+
+                <p>
+                    Ce formulaire stabilise la V1 de l'emploi du temps. Il reste volontairement simple :
+                    jour, horaire, cours, salle et statut.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">V2</div>
+
+                <h2>Évolution prévue</h2>
+
+                <p>
+                    La prochaine logique métier devra gérer les emplois du temps par année universitaire,
+                    classe et semaine, avec publication du dernier emploi du temps valide.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">CL</div>
+
+                <h2>Pourquoi pas encore classe ?</h2>
+
+                <p>
+                    Le modèle actuel ne relie pas directement un créneau à une classe. On évite donc
+                    d'afficher une fausse donnée dans l'interface.
+                </p>
+            </article>
+
+            <article class="cs-form-actions-card">
+                <button class="btn btn-primary" type="submit">
+                    <%= submitLabel || (isEdit ? 'Enregistrer' : 'Créer le créneau') %>
+                </button>
+
+                <a class="btn btn-secondary" href="<%= backUrl %>">
+                    Annuler
+                </a>
+            </article>
+        </aside>
+    </section>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var daySelect = document.getElementById('jour');
+        var startInput = document.getElementById('heureDebut');
+        var endInput = document.getElementById('heureFin');
+        var courseSelect = document.getElementById('courseId');
+        var roomInput = document.getElementById('salle');
+        var statusSelect = document.getElementById('statut');
+
+        function setPreview(name, value) {
+            var element = document.querySelector('[data-preview="' + name + '"]');
+
+            if (!element) return;
+
+            element.textContent = value && String(value).trim()
+                ? String(value).trim()
+                : 'Non défini';
+        }
+
+        function getSelectedText(select, fallback) {
+            if (!select || !select.value) {
+                return fallback || 'Non défini';
+            }
+
+            var option = select.options[select.selectedIndex];
+
+            return option ? option.textContent.trim() : (fallback || 'Non défini');
+        }
+
+        function getSelectedAttribute(select, attributeName, fallback) {
+            if (!select || !select.value) {
+                return fallback || 'Non défini';
+            }
+
+            var option = select.options[select.selectedIndex];
+
+            if (!option) {
+                return fallback || 'Non défini';
+            }
+
+            return option.getAttribute(attributeName) || fallback || 'Non défini';
+        }
+
+        function syncPreview() {
+            var startValue = startInput ? startInput.value : '';
+            var endValue = endInput ? endInput.value : '';
+            var hourLabel = startValue && endValue ? startValue + ' - ' + endValue : '';
+
+            setPreview('jour', getSelectedText(daySelect, 'Non défini'));
+            setPreview('horaire', hourLabel);
+            setPreview('course', getSelectedText(courseSelect, 'À sélectionner'));
+            setPreview('program', getSelectedAttribute(courseSelect, 'data-program-label', 'Programme non défini'));
+            setPreview('salle', roomInput ? roomInput.value : '');
+            setPreview('statut', getSelectedText(statusSelect, 'Normal'));
+        }
+
+        [daySelect, startInput, endInput, courseSelect, roomInput, statusSelect].forEach(function (field) {
+            if (!field) return;
+
+            field.addEventListener('input', syncPreview);
+            field.addEventListener('change', syncPreview);
+        });
+
+        syncPreview();
+    });
+</script>
+
+<%- include('../../partials/footer') %>

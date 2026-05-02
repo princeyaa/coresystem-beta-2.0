@@ -1,0 +1,428 @@
+﻿<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Note',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var g = typeof grade !== 'undefined' && grade ? grade : {};
+    var safeStudents = Array.isArray(students) ? students : [];
+    var safeCourses = Array.isArray(courses) ? courses : [];
+    var safeEvalTypes = Array.isArray(allowedEvalTypes) ? allowedEvalTypes : ['CC', 'PARTIEL', 'EXAMEN', 'RATTRAPAGE'];
+    var safeClassContext = typeof classContext !== 'undefined' && classContext ? classContext : null;
+
+    var isEdit = Boolean(g && g.id);
+    var backUrl = safeClassContext ? '/admin/grades?classId=' + safeClassContext.id : '/admin/grades';
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+
+    function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+    }
+
+    function checked(value) {
+        return value ? 'checked' : '';
+    }
+
+    function studentLabel(student) {
+        if (!student) return 'Etudiant';
+
+        var name = ((student.prenom || '') + ' ' + (student.nom || '')).trim();
+        var matricule = student.matricule ? ' - ' + student.matricule : '';
+
+        return (name || 'Etudiant') + matricule;
+    }
+
+    function courseLabel(course) {
+        if (!course) return 'Cours';
+
+        var label = ((course.code || '') + ' - ' + (course.nom || '')).trim();
+
+        if (course.semestre) {
+            label = label + ' (' + course.semestre + ')';
+        }
+
+        return label || 'Cours';
+    }
+
+    function studentSearchText(student) {
+        if (!student) return '';
+
+        return [
+            student.prenom || '',
+            student.nom || '',
+            student.matricule || '',
+            student.email || ''
+        ].join(' ').toLowerCase();
+    }
+
+    function courseSearchText(course) {
+        if (!course) return '';
+
+        return [
+            course.code || '',
+            course.nom || '',
+            course.semestre || '',
+            course.enseignant || ''
+        ].join(' ').toLowerCase();
+    }
+
+    var currentValue = typeof g.valeur !== 'undefined' && g.valeur !== null ? g.valeur : '';
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        &larr; Retour aux notes
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Notes</span>
+
+        <h1><%= pageTitle || (isEdit ? 'Modifier la note' : 'Nouvelle note') %></h1>
+
+        <p>
+            Enregistrez une note en respectant le contexte : etudiant, cours, type d'evaluation et publication.
+            La selection etudiant doit rester simple meme avec beaucoup d'inscrits.
+        </p>
+
+        <% if (safeClassContext) { %>
+            <div class="cs-context-pill-row">
+                <span class="cs-context-pill">
+                    Classe : <strong><%= safeText(safeClassContext.nom, '-') %></strong>
+                </span>
+
+                <span class="cs-context-pill">
+                    Annee : <strong><%= safeText(safeClassContext.academicYear, '-') %></strong>
+                </span>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="<%= backUrl %>">
+            Liste notes
+        </a>
+
+        <% if (safeClassContext) { %>
+            <a class="btn btn-secondary" href="/admin/classes/<%= safeClassContext.id %>">
+                Fiche classe
+            </a>
+        <% } %>
+    </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+        <%= error %>
+    </div>
+<% } %>
+
+<form class="cs-grade-form" method="POST" action="<%= formAction %>">
+    <%- include('../../partials/csrf') %>
+
+    <% if (safeClassContext) { %>
+        <input type="hidden" name="classId" value="<%= safeClassContext.id %>">
+    <% } %>
+
+    <section class="cs-form-layout">
+        <div class="cs-form-main">
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Contexte de la note</h2>
+                        <p>Choisissez l'etudiant, le cours et le type d'evaluation.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid">
+                    <div class="cs-form-field">
+                        <label for="studentSearch">Recherche etudiant</label>
+                        <input
+                            id="studentSearch"
+                            type="text"
+                            placeholder="Rechercher par nom, prenom ou matricule..."
+                            autocomplete="off"
+                        >
+                        <p>Filtre rapidement la liste des etudiants disponibles.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="studentId">Etudiant *</label>
+                        <select id="studentId" name="studentId" required>
+                            <option value="">Selectionner un etudiant</option>
+
+                            <% safeStudents.forEach(function(student) { %>
+                                <option
+                                    value="<%= student.id %>"
+                                    data-search="<%= studentSearchText(student) %>"
+                                    <%= selected(g.studentId, student.id) %>
+                                >
+                                    <%= studentLabel(student) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        <p>
+                            Si une classe est choisie, cette liste doit deja etre limitee au contexte de cette classe.
+                        </p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="courseId">Cours *</label>
+                        <select id="courseId" name="courseId" required>
+                            <option value="">Selectionner un cours</option>
+
+                            <% safeCourses.forEach(function(course) { %>
+                                <option
+                                    value="<%= course.id %>"
+                                    data-search="<%= courseSearchText(course) %>"
+                                    <%= selected(g.courseId, course.id) %>
+                                >
+                                    <%= courseLabel(course) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        <p>Le cours represente la matiere concernee par la note.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Evaluation</h2>
+                        <p>Renseignez le type d'evaluation et la valeur de la note.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid">
+                    <div class="cs-form-field">
+                        <label for="typeEvaluation">Type d'evaluation *</label>
+                        <select id="typeEvaluation" name="typeEvaluation" required>
+                            <option value="">Selectionner un type</option>
+
+                            <% safeEvalTypes.forEach(function(type) { %>
+                                <option value="<%= type %>" <%= selected(g.typeEvaluation, type) %>>
+                                    <%= helpers.formatEnumLabel(type) %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="valeur">Note /20 *</label>
+                        <input
+                            id="valeur"
+                            name="valeur"
+                            type="number"
+                            min="0"
+                            max="20"
+                            step="0.01"
+                            value="<%= safeText(currentValue, '') %>"
+                            placeholder="Ex : 14.5"
+                            required
+                        >
+                        <p>Valeur comprise entre 0 et 20.</p>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="published">Publication</label>
+
+                        <label class="cs-grade-switch">
+                            <input
+                                id="published"
+                                name="published"
+                                type="checkbox"
+                                value="1"
+                                <%= checked(g.published) %>
+                            >
+                            <span></span>
+                            <strong>Publier cette note</strong>
+                        </label>
+
+                        <p>
+                            Une note publiee devient visible selon les regles du portail etudiant.
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Resume avant validation</h2>
+                        <p>Verifiez les informations avant d'enregistrer.</p>
+                    </div>
+                </div>
+
+                <div class="cs-grade-preview">
+                    <div>
+                        <span>Etudiant</span>
+                        <strong data-preview="student">A selectionner</strong>
+                    </div>
+
+                    <div>
+                        <span>Cours</span>
+                        <strong data-preview="course">A selectionner</strong>
+                    </div>
+
+                    <div>
+                        <span>Evaluation</span>
+                        <strong data-preview="typeEvaluation">Non defini</strong>
+                    </div>
+
+                    <div>
+                        <span>Note</span>
+                        <strong data-preview="valeur"><%= safeText(currentValue, 'Non defini') %></strong>
+                    </div>
+
+                    <div>
+                        <span>Statut</span>
+                        <strong data-preview="published"><%= g.published ? 'Publiee' : 'Brouillon' %></strong>
+                    </div>
+
+                    <div>
+                        <span>Contexte</span>
+                        <strong>
+                            <%= safeClassContext ? safeText(safeClassContext.nom, '-') : 'General' %>
+                        </strong>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="cs-form-side">
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">NT</div>
+
+                <h2>
+                    <%= isEdit ? 'Modification note' : 'Creation note' %>
+                </h2>
+
+                <p>
+                    Une note doit toujours etre reliee a un etudiant et un cours.
+                    La publication doit rester volontaire et traçable.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">CL</div>
+
+                <h2>Logique cible</h2>
+
+                <p>
+                    La gestion finale doit suivre : annee universitaire, classe,
+                    semestre, matiere, puis etudiant.
+                </p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">IM</div>
+
+                <h2>Gestion en lot</h2>
+
+                <p>
+                    Pour plusieurs notes d'une meme matiere, privilegie l'import ou la publication groupee.
+                </p>
+            </article>
+
+            <article class="cs-form-actions-card">
+                <button class="btn btn-primary" type="submit">
+                    <%= submitLabel || (isEdit ? 'Enregistrer' : 'Enregistrer la note') %>
+                </button>
+
+                <a class="btn btn-secondary" href="<%= backUrl %>">
+                    Annuler
+                </a>
+            </article>
+        </aside>
+    </section>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var studentSearch = document.getElementById('studentSearch');
+        var studentSelect = document.getElementById('studentId');
+        var courseSelect = document.getElementById('courseId');
+        var typeSelect = document.getElementById('typeEvaluation');
+        var valeurInput = document.getElementById('valeur');
+        var publishedInput = document.getElementById('published');
+
+        var studentOptions = studentSelect
+            ? Array.prototype.slice.call(studentSelect.options)
+            : [];
+
+        function getSelectedText(select, fallback) {
+            if (!select || !select.value) {
+                return fallback || 'A selectionner';
+            }
+
+            var option = select.options[select.selectedIndex];
+
+            return option ? option.textContent.trim() : (fallback || 'A selectionner');
+        }
+
+        function setPreview(name, value) {
+            var element = document.querySelector('[data-preview="' + name + '"]');
+
+            if (!element) return;
+
+            element.textContent = value && String(value).trim()
+                ? String(value).trim()
+                : 'Non defini';
+        }
+
+        function filterStudents() {
+            if (!studentSearch || !studentSelect) return;
+
+            var query = String(studentSearch.value || '').toLowerCase().trim();
+
+            studentOptions.forEach(function (option) {
+                if (!option.value) {
+                    option.hidden = false;
+                    return;
+                }
+
+                var text = String(option.getAttribute('data-search') || option.textContent || '').toLowerCase();
+                option.hidden = query && text.indexOf(query) === -1;
+
+                if (option.hidden && option.selected) {
+                    studentSelect.value = '';
+                }
+            });
+        }
+
+        function syncPreview() {
+            setPreview('student', getSelectedText(studentSelect, 'A selectionner'));
+            setPreview('course', getSelectedText(courseSelect, 'A selectionner'));
+            setPreview('typeEvaluation', getSelectedText(typeSelect, 'Non defini'));
+            setPreview('valeur', valeurInput ? valeurInput.value : '');
+            setPreview('published', publishedInput && publishedInput.checked ? 'Publiee' : 'Brouillon');
+        }
+
+        [studentSearch, studentSelect, courseSelect, typeSelect, valeurInput, publishedInput].forEach(function (field) {
+            if (!field) return;
+
+            field.addEventListener('input', function () {
+                filterStudents();
+                syncPreview();
+            });
+
+            field.addEventListener('change', function () {
+                filterStudents();
+                syncPreview();
+            });
+        });
+
+        filterStudents();
+        syncPreview();
+    });
+</script>
+
+<%- include('../../partials/footer') %>

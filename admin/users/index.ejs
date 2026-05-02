@@ -1,0 +1,221 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Utilisateurs administratifs',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var users = Array.isArray(adminUsers) ? adminUsers : [];
+
+    var totalUsers = users.length;
+    var activeUsers = 0;
+    var inactiveUsers = 0;
+    var superAdmins = 0;
+    var campusAdmins = 0;
+
+    users.forEach(function(user) {
+        if (user.isActive) activeUsers += 1;
+        else inactiveUsers += 1;
+
+        if (user.role === 'SUPER_ADMIN') superAdmins += 1;
+        if (user.role === 'ADMIN_CAMPUS') campusAdmins += 1;
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function enumLabel(value) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(value);
+        }
+
+        return safeText(value, '-');
+    }
+
+    function initials(user) {
+        var prenom = user && user.prenom ? String(user.prenom).charAt(0) : '';
+        var nom = user && user.nom ? String(user.nom).charAt(0) : '';
+        return (prenom + nom).toUpperCase() || 'AD';
+    }
+
+    function fullName(user) {
+        return [
+            user.prenom || '',
+            user.nom || ''
+        ].join(' ').trim() || 'Administrateur';
+    }
+
+    function roleBadge(role) {
+        if (role === 'SUPER_ADMIN') return 'badge-danger';
+        if (role === 'ADMIN_CAMPUS') return 'badge-info';
+        return 'badge-neutral';
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Administration système</span>
+
+        <h1>Utilisateurs administratifs</h1>
+
+        <p>
+            Gérez uniquement les rôles officiels : SUPER_ADMIN et ADMIN_CAMPUS.
+            Les anciens rôles ne doivent pas réapparaître.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/users/new">
+            Créer un utilisateur
+        </a>
+    </div>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">AD</div>
+        <div>
+            <strong><%= totalUsers %></strong>
+            <span>Total admins</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">SA</div>
+        <div>
+            <strong><%= superAdmins %></strong>
+            <span>SUPER_ADMIN</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">AC</div>
+        <div>
+            <strong><%= campusAdmins %></strong>
+            <span>ADMIN_CAMPUS</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= activeUsers %></strong>
+            <span>Actifs</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des administrateurs</h2>
+            <p><%= users.length %> compte<%= users.length > 1 ? 's' : '' %> administratif<%= users.length > 1 ? 's' : '' %>.</p>
+        </div>
+
+        <span class="cs-table-count"><%= users.length %></span>
+    </div>
+
+    <% if (!users.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucun compte trouvé</h2>
+            <p>Créez un compte administratif pour commencer.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-config-table">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Campus</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% users.forEach(function(user) { %>
+                        <tr>
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar"><%= initials(user) %></div>
+
+                                    <div class="cs-entity-main">
+                                        <a class="cs-entity-title cs-config-link" href="/admin/users/<%= user.id %>/edit">
+                                            <%= fullName(user) %>
+                                        </a>
+
+                                        <span class="cs-entity-subtitle cs-text-safe">
+                                            <%= safeText(user.email, '-') %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= roleBadge(user.role) %>">
+                                    <%= enumLabel(user.role) %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= user.campus ? safeText(user.campus.nom, '-') : 'Global' %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% if (user.isActive) { %>
+                                    <span class="badge badge-success">Actif</span>
+                                <% } else { %>
+                                    <span class="badge badge-danger">Désactivé</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/users/<%= user.id %>/edit">Modifier</a>
+
+                                        <form method="POST" action="/admin/users/<%= user.id %>/reset-password">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button type="submit" data-confirm="Réinitialiser le mot de passe de cet administrateur ?">
+                                                Reset mot de passe
+                                            </button>
+                                        </form>
+
+                                        <form method="POST" action="/admin/users/<%= user.id %>/toggle-active">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button type="submit" data-confirm="<%= user.isActive ? 'Désactiver ce compte ?' : 'Réactiver ce compte ?' %>">
+                                                <%= user.isActive ? 'Désactiver' : 'Réactiver' %>
+                                            </button>
+                                        </form>
+
+                                        <form method="POST" action="/admin/users/<%= user.id %>/delete">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button class="cs-danger-action" type="submit" data-confirm="Supprimer ce compte administratif ?">
+                                                Supprimer
+                                            </button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

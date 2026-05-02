@@ -1,0 +1,113 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Campus',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeCampuses = Array.isArray(campuses) ? campuses : [];
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function countOf(item, key) {
+        if (!item || !item._count) return 0;
+        return Number(item._count[key] || 0);
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Configuration administrative</span>
+
+        <h1>Campus</h1>
+
+        <p>
+            Gérez les sites/campus. Le campus est la base du périmètre ADMIN_CAMPUS.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/campuses/new">
+            Nouveau campus
+        </a>
+    </div>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">CP</div>
+        <div>
+            <strong><%= safeCampuses.length %></strong>
+            <span>Campus</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-config-grid">
+    <% if (!safeCampuses.length) { %>
+        <div class="empty-state">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucun campus trouvé</h2>
+            <p>Créez au moins un campus pour organiser les comptes locaux.</p>
+        </div>
+    <% } else { %>
+        <% safeCampuses.forEach(function(campus) { %>
+            <article class="cs-config-card">
+                <div class="cs-config-card-head">
+                    <div class="cs-config-card-icon">CP</div>
+
+                    <details class="cs-action-dropdown">
+                        <summary>Actions</summary>
+
+                        <div class="cs-action-menu">
+                            <a href="/admin/campuses/<%= campus.id %>/edit">Modifier</a>
+                            <a href="/admin/departments?campusId=<%= campus.id %>">Départements</a>
+                            <a href="/admin/classes?campusId=<%= campus.id %>">Classes</a>
+
+                            <form method="POST" action="/admin/campuses/<%= campus.id %>/delete">
+                                <%- include('../../partials/csrf') %>
+
+                                <button class="cs-danger-action" type="submit" data-confirm="Supprimer ce campus ?">
+                                    Supprimer
+                                </button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+
+                <h2><%= safeText(campus.nom, 'Campus') %></h2>
+
+                <p><%= safeText(campus.adresse, 'Adresse non renseignée') %></p>
+
+                <div class="cs-config-meta">
+                    <div>
+                        <span>Code</span>
+                        <strong><%= safeText(campus.code, '-') %></strong>
+                    </div>
+
+                    <div>
+                        <span>Départements</span>
+                        <strong><%= countOf(campus, 'departments') %></strong>
+                    </div>
+
+                    <div>
+                        <span>Classes</span>
+                        <strong><%= countOf(campus, 'classes') %></strong>
+                    </div>
+
+                    <div>
+                        <span>Admins locaux</span>
+                        <strong><%= countOf(campus, 'adminUsers') %></strong>
+                    </div>
+                </div>
+            </article>
+        <% }) %>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

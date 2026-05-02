@@ -1,0 +1,132 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Départements',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeDepartments = Array.isArray(departments) ? departments : [];
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function countOf(item, key) {
+        if (!item || !item._count) return 0;
+        return Number(item._count[key] || 0);
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Configuration académique</span>
+
+        <h1>Départements</h1>
+
+        <p>
+            Gérez les départements académiques par campus : Informatique, Gestion, Droit, etc.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/departments/new">
+            Nouveau département
+        </a>
+    </div>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des départements</h2>
+            <p><%= safeDepartments.length %> département<%= safeDepartments.length > 1 ? 's' : '' %>.</p>
+        </div>
+
+        <span class="cs-table-count"><%= safeDepartments.length %></span>
+    </div>
+
+    <% if (!safeDepartments.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucun département trouvé</h2>
+            <p>Créez un département pour structurer les classes et les professeurs.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-config-table">
+                <thead>
+                    <tr>
+                        <th>Département</th>
+                        <th>Campus</th>
+                        <th>Classes</th>
+                        <th>Professeurs</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% safeDepartments.forEach(function(department) { %>
+                        <tr>
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar">DP</div>
+
+                                    <div class="cs-entity-main">
+                                        <a class="cs-entity-title cs-config-link" href="/admin/departments/<%= department.id %>/edit">
+                                            <%= safeText(department.nom, 'Département') %>
+                                        </a>
+
+                                        <span class="cs-entity-subtitle">Code : <%= safeText(department.code, '-') %></span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= department.campus ? safeText(department.campus.nom, '-') : 'Campus non défini' %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <a class="cs-cell-strong cs-config-link" href="/admin/classes?departmentId=<%= department.id %>">
+                                    <%= countOf(department, 'classes') %> classe<%= countOf(department, 'classes') > 1 ? 's' : '' %>
+                                </a>
+                            </td>
+
+                            <td>
+                                <a class="cs-cell-strong cs-config-link" href="/admin/professors?departmentId=<%= department.id %>">
+                                    <%= countOf(department, 'professors') %> professeur<%= countOf(department, 'professors') > 1 ? 's' : '' %>
+                                </a>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/departments/<%= department.id %>/edit">Modifier</a>
+                                        <a href="/admin/classes?departmentId=<%= department.id %>">Classes</a>
+                                        <a href="/admin/professors?departmentId=<%= department.id %>">Professeurs</a>
+
+                                        <form method="POST" action="/admin/departments/<%= department.id %>/delete">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button class="cs-danger-action" type="submit" data-confirm="Supprimer ce département ?">
+                                                Supprimer
+                                            </button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

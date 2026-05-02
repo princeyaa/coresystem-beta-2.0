@@ -1,0 +1,453 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Demandes',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeRequests = Array.isArray(requests) ? requests : [];
+    var safeFilters = typeof filters !== 'undefined' && filters ? filters : {};
+    var safeStatuses = Array.isArray(requestStatuses) ? requestStatuses : ['SOUMISE', 'EN_TRAITEMENT', 'TRAITEE', 'REJETEE'];
+    var safeTypes = Array.isArray(requestTypes) ? requestTypes : ['ATTESTATION_INSCRIPTION', 'RELEVE_DE_NOTES', 'CERTIFICAT_SCOLARITE', 'DEMANDE_INFORMATION'];
+    var safeCounts = typeof statusCounts !== 'undefined' && statusCounts ? statusCounts : {};
+
+    var currentStatus = safeFilters.status || 'all';
+    var currentType = safeFilters.type || 'all';
+    var currentQuery = safeFilters.q || '';
+
+    var fallbackCounts = {
+        SOUMISE: 0,
+        EN_TRAITEMENT: 0,
+        TRAITEE: 0,
+        REJETEE: 0
+    };
+
+    safeRequests.forEach(function(item) {
+        if (item && item.statut && typeof fallbackCounts[item.statut] !== 'undefined') {
+            fallbackCounts[item.statut] += 1;
+        }
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+    }
+
+    function enumLabel(value) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(value);
+        }
+
+        return safeText(value, '-');
+    }
+
+    function statusBadge(status) {
+        if (status === 'SOUMISE') return 'badge-info';
+        if (status === 'EN_TRAITEMENT') return 'badge-warning';
+        if (status === 'TRAITEE') return 'badge-success';
+        if (status === 'REJETEE') return 'badge-danger';
+        return 'badge-neutral';
+    }
+
+    function statusCount(status) {
+        if (safeCounts && typeof safeCounts[status] !== 'undefined') {
+            return Number(safeCounts[status] || 0);
+        }
+
+        return Number(fallbackCounts[status] || 0);
+    }
+
+    function totalCount() {
+        if (safeCounts && typeof safeCounts.all !== 'undefined') {
+            return Number(safeCounts.all || 0);
+        }
+
+        if (safeCounts && typeof safeCounts.total !== 'undefined') {
+            return Number(safeCounts.total || 0);
+        }
+
+        return statusCount('SOUMISE') + statusCount('EN_TRAITEMENT') + statusCount('TRAITEE') + statusCount('REJETEE');
+    }
+
+    function requestHref(status, type, query) {
+        var parts = [];
+
+        if (status && status !== 'all') {
+            parts.push('status=' + encodeURIComponent(status));
+        }
+
+        if (type && type !== 'all') {
+            parts.push('type=' + encodeURIComponent(type));
+        }
+
+        if (query) {
+            parts.push('q=' + encodeURIComponent(query));
+        }
+
+        return '/admin/requests' + (parts.length ? '?' + parts.join('&') : '');
+    }
+
+    function isActiveStatus(status) {
+        return String(currentStatus || 'all') === String(status || 'all');
+    }
+
+    function studentName(student) {
+        if (!student) return 'Étudiant non défini';
+
+        return [
+            student.prenom || '',
+            student.nom || ''
+        ].join(' ').trim() || 'Étudiant';
+    }
+
+    function studentInitials(student) {
+        if (!student) return 'ET';
+
+        var prenom = student.prenom ? String(student.prenom).charAt(0) : '';
+        var nom = student.nom ? String(student.nom).charAt(0) : '';
+
+        return (prenom + nom).toUpperCase() || 'ET';
+    }
+
+    function classLabel(student) {
+        if (!student || !Array.isArray(student.enrollments) || !student.enrollments.length) {
+            return '-';
+        }
+
+        var enrollment = student.enrollments[0];
+
+        if (!enrollment || !enrollment.class) {
+            return '-';
+        }
+
+        return enrollment.class.nom || '-';
+    }
+
+    function campusLabel(student) {
+        if (!student || !Array.isArray(student.enrollments) || !student.enrollments.length) {
+            return '-';
+        }
+
+        var enrollment = student.enrollments[0];
+
+        if (!enrollment || !enrollment.class || !enrollment.class.campus) {
+            return '-';
+        }
+
+        return enrollment.class.campus.nom || '-';
+    }
+
+    function formatDateTime(value) {
+        if (!value) return '-';
+
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatDateTime) {
+            return helpers.formatDateTime(value);
+        }
+
+        return value;
+    }
+
+    function hasActiveFilters() {
+        return currentStatus !== 'all' || currentType !== 'all' || currentQuery;
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Demandes</span>
+
+        <h1>Demandes étudiantes</h1>
+
+        <p>
+            Suivez les demandes administratives des étudiants par statut.
+            Les cartes ci-dessous servent de filtres rapides.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/search?scope=requests">
+            Recherche demandes
+        </a>
+    </div>
+</section>
+
+<section class="cs-request-kpi-row">
+    <a
+        class="cs-list-kpi cs-request-kpi <%= isActiveStatus('all') ? 'is-active' : '' %>"
+        href="<%= requestHref('all', currentType, currentQuery) %>"
+    >
+        <div class="cs-list-kpi-icon">DM</div>
+        <div>
+            <strong><%= totalCount() %></strong>
+            <span>Total demandes</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-request-kpi <%= isActiveStatus('SOUMISE') ? 'is-active' : '' %>"
+        href="<%= requestHref('SOUMISE', currentType, currentQuery) %>"
+    >
+        <div class="cs-list-kpi-icon">SO</div>
+        <div>
+            <strong><%= statusCount('SOUMISE') %></strong>
+            <span>Soumises</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-request-kpi <%= isActiveStatus('EN_TRAITEMENT') ? 'is-active' : '' %>"
+        href="<%= requestHref('EN_TRAITEMENT', currentType, currentQuery) %>"
+    >
+        <div class="cs-list-kpi-icon">TR</div>
+        <div>
+            <strong><%= statusCount('EN_TRAITEMENT') %></strong>
+            <span>En traitement</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-request-kpi <%= isActiveStatus('TRAITEE') ? 'is-active' : '' %>"
+        href="<%= requestHref('TRAITEE', currentType, currentQuery) %>"
+    >
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= statusCount('TRAITEE') %></strong>
+            <span>Traitées</span>
+        </div>
+    </a>
+
+    <a
+        class="cs-list-kpi cs-request-kpi <%= isActiveStatus('REJETEE') ? 'is-active' : '' %>"
+        href="<%= requestHref('REJETEE', currentType, currentQuery) %>"
+    >
+        <div class="cs-list-kpi-icon">RJ</div>
+        <div>
+            <strong><%= statusCount('REJETEE') %></strong>
+            <span>Rejetées</span>
+        </div>
+    </a>
+</section>
+
+<section class="cs-request-tools-panel">
+    <div class="cs-filter-panel-head">
+        <div>
+            <h2>Recherche complémentaire</h2>
+            <p>
+                Les statuts se filtrent par KPI. Utilisez cette zone seulement pour affiner par type ou texte.
+            </p>
+        </div>
+
+        <% if (hasActiveFilters()) { %>
+            <a class="cs-filter-reset" href="/admin/requests">
+                Réinitialiser
+            </a>
+        <% } %>
+    </div>
+
+    <form class="cs-request-compact-filter-form" method="GET" action="/admin/requests">
+        <input type="hidden" name="status" value="<%= currentStatus %>">
+
+        <div class="cs-filter-field cs-filter-field-wide">
+            <label for="q">Recherche</label>
+
+            <input
+                id="q"
+                name="q"
+                type="text"
+                value="<%= currentQuery %>"
+                placeholder="Nom, matricule, motif, commentaire..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="cs-filter-field">
+            <label for="type">Type</label>
+
+            <select id="type" name="type">
+                <option value="all" <%= selected(currentType, 'all') %>>
+                    Tous les types
+                </option>
+
+                <% safeTypes.forEach(function(type) { %>
+                    <option value="<%= type %>" <%= selected(currentType, type) %>>
+                        <%= enumLabel(type) %>
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+
+        <div class="cs-filter-actions">
+            <button class="btn btn-primary" type="submit">
+                Appliquer
+            </button>
+
+            <% if (hasActiveFilters()) { %>
+                <a class="btn btn-secondary" href="/admin/requests">
+                    Réinitialiser
+                </a>
+            <% } %>
+        </div>
+    </form>
+
+    <% if (hasActiveFilters()) { %>
+        <div class="cs-active-filter-list cs-request-active-filters">
+            <% if (currentStatus !== 'all') { %>
+                <span>Statut : <strong><%= enumLabel(currentStatus) %></strong></span>
+            <% } %>
+
+            <% if (currentType !== 'all') { %>
+                <span>Type : <strong><%= enumLabel(currentType) %></strong></span>
+            <% } %>
+
+            <% if (currentQuery) { %>
+                <span>Recherche : <strong><%= currentQuery %></strong></span>
+            <% } %>
+        </div>
+    <% } %>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des demandes</h2>
+            <p>
+                <%= safeRequests.length %> résultat<%= safeRequests.length > 1 ? 's' : '' %>
+                affiché<%= safeRequests.length > 1 ? 's' : '' %>.
+            </p>
+        </div>
+
+        <span class="cs-table-count"><%= safeRequests.length %></span>
+    </div>
+
+    <% if (!safeRequests.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucune demande trouvée</h2>
+            <p>Aucune demande ne correspond à ces critères.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-requests-table">
+                <thead>
+                    <tr>
+                        <th>Étudiant</th>
+                        <th>Demande</th>
+                        <th>Classe / Campus</th>
+                        <th>Statut</th>
+                        <th>Dates</th>
+                        <th>Traitement</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% safeRequests.forEach(function(item) {
+                        var student = item.student || null;
+                    %>
+                        <tr>
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar">
+                                        <%= studentInitials(student) %>
+                                    </div>
+
+                                    <div class="cs-entity-main">
+                                        <% if (student) { %>
+                                            <a class="cs-entity-title cs-request-link" href="/admin/students/<%= student.id %>">
+                                                <%= studentName(student) %>
+                                            </a>
+
+                                            <span class="cs-entity-subtitle">
+                                                Matricule : <%= safeText(student.matricule, '-') %>
+                                            </span>
+                                        <% } else { %>
+                                            <span class="cs-entity-title">Étudiant non défini</span>
+                                            <span class="cs-entity-subtitle">Dossier indisponible</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <a class="cs-cell-strong cs-request-link" href="/admin/requests/<%= item.id %>">
+                                    <%= enumLabel(item.typeDemande) %>
+                                </a>
+
+                                <div class="cs-cell-muted cs-text-safe">
+                                    <%= safeText(item.motif, 'Aucun motif renseigné') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= classLabel(student) %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= campusLabel(student) %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= statusBadge(item.statut) %>">
+                                    <%= enumLabel(item.statut) %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    Créée : <%= formatDateTime(item.createdAt) %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    Mise à jour : <%= formatDateTime(item.updatedAt) %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% if (item.treatedBy) { %>
+                                    <div class="cs-cell-strong">
+                                        <%= safeText(item.treatedBy.prenom, '') %>
+                                        <%= safeText(item.treatedBy.nom, '') %>
+                                    </div>
+
+                                    <div class="cs-cell-muted">
+                                        <%= item.treatedAt ? formatDateTime(item.treatedAt) : 'Traitement en cours' %>
+                                    </div>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Non traité</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/requests/<%= item.id %>">
+                                            Ouvrir la demande
+                                        </a>
+
+                                        <% if (student) { %>
+                                            <a href="/admin/students/<%= student.id %>">
+                                                Voir l’étudiant
+                                            </a>
+                                        <% } %>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,345 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Student {
+  id          String       @id @default(uuid()) @db.Char(36)
+  matricule   String       @unique @db.VarChar(50)
+  nom         String       @db.VarChar(100)
+  prenom      String       @db.VarChar(100)
+  email       String?      @db.VarChar(191)
+  telephone   String?      @db.VarChar(30)
+  password    String       @db.VarChar(255)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  enrollments Enrollment[]
+  grades      Grade[]
+  requests    Request[]
+}
+
+model AdminUser {
+  id              String         @id @default(uuid()) @db.Char(36)
+  nom             String         @db.VarChar(100)
+  prenom          String         @db.VarChar(100)
+  email           String         @unique @db.VarChar(191)
+  password        String         @db.VarChar(255)
+  role            AdminRole      @default(ADMIN_CAMPUS)
+  isActive        Boolean        @default(true)
+  campusId        String?        @db.Char(36)
+  departmentId    String?        @db.Char(36)
+  campus          Campus?        @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  department      Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  announcements   Announcement[]
+  treatedRequests Request[]      @relation("treatedBy")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN_CAMPUS
+}
+
+enum AuditActorType {
+  ADMIN
+  PROFESSOR
+  STUDENT
+  SYSTEM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESET_PASSWORD
+  ACTIVATE
+  DEACTIVATE
+  PUBLISH
+  UNPUBLISH
+  STATUS_CHANGE
+  LOGIN
+  LOGOUT
+}
+
+enum AuditEntityType {
+  ADMIN_USER
+  STUDENT
+  PROFESSOR
+  TEACHING_ASSIGNMENT
+  GRADE
+  REQUEST
+  ANNOUNCEMENT
+  ACADEMIC_CLASS
+  PROGRAM
+  COURSE
+  SCHEDULE
+  CAMPUS
+  DEPARTMENT
+  AUTH_SESSION
+}
+
+model Program {
+  id            String          @id @default(uuid()) @db.Char(36)
+  filiere       String          @db.VarChar(120)
+  niveau        String          @db.VarChar(20)
+  faculte       String?         @db.VarChar(120)
+  regime        String          @default("annuel") @db.VarChar(20)
+  createdAt     DateTime        @default(now())
+  enrollments   Enrollment[]
+  courses       Course[]
+  announcements Announcement[]
+  classes       AcademicClass[]
+
+  @@unique([filiere, niveau])
+}
+
+model Enrollment {
+  id           String         @id @default(uuid()) @db.Char(36)
+  academicYear String         @db.VarChar(9)
+  createdAt    DateTime       @default(now())
+  studentId    String         @db.Char(36)
+  programId    String         @db.Char(36)
+  classId      String?        @db.Char(36)
+  student      Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  program      Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  class        AcademicClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, programId, academicYear])
+}
+
+model Course {
+  id                  String               @id @default(uuid()) @db.Char(36)
+  code                String               @unique @db.VarChar(50)
+  nom                 String               @db.VarChar(150)
+  semestre            String               @db.VarChar(20)
+  volumeHoraire       Int?
+  credits             Int
+  coefficient         Float
+  enseignant          String?              @db.VarChar(150)
+  createdAt           DateTime             @default(now())
+  programId           String               @db.Char(36)
+  program             Program              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  schedules           Schedule[]
+  grades              Grade[]
+  teachingAssignments TeachingAssignment[]
+}
+
+model Schedule {
+  id         String         @id @default(uuid()) @db.Char(36)
+  jour       DayOfWeek
+  heureDebut String         @db.Char(5)
+  heureFin   String         @db.Char(5)
+  salle      String?        @db.VarChar(100)
+  statut     ScheduleStatus @default(NORMAL)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  courseId   String         @db.Char(36)
+  course     Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+enum DayOfWeek {
+  LUNDI
+  MARDI
+  MERCREDI
+  JEUDI
+  VENDREDI
+  SAMEDI
+}
+
+enum ScheduleStatus {
+  NORMAL
+  MODIFIE
+  ANNULE
+}
+
+model Grade {
+  id             String   @id @default(uuid()) @db.Char(36)
+  typeEvaluation EvalType
+  valeur         Float
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  studentId      String   @db.Char(36)
+  courseId       String   @db.Char(36)
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, typeEvaluation])
+  @@index([studentId, courseId])
+}
+
+enum EvalType {
+  CC
+  PARTIEL
+  EXAMEN
+  RATTRAPAGE
+}
+
+model Announcement {
+  id        String           @id @default(uuid()) @db.Char(36)
+  titre     String           @db.VarChar(191)
+  contenu   String           @db.Text
+  priorite  AnnouncePriority @default(NORMALE)
+  expiresAt DateTime?
+  createdAt DateTime         @default(now())
+  programId String?          @db.Char(36)
+  program   Program?         @relation(fields: [programId], references: [id], onDelete: SetNull)
+  authorId  String           @db.Char(36)
+  author    AdminUser        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+enum AnnouncePriority {
+  NORMALE
+  IMPORTANTE
+  URGENTE
+}
+
+model Request {
+  id          String        @id @default(uuid()) @db.Char(36)
+  typeDemande RequestType
+  motif       String?       @db.Text
+  statut      RequestStatus @default(SOUMISE)
+  commentaire String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  treatedAt   DateTime?
+  studentId   String        @db.Char(36)
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  treatedById String?       @db.Char(36)
+  treatedBy   AdminUser?    @relation("treatedBy", fields: [treatedById], references: [id], onDelete: SetNull)
+}
+
+enum RequestType {
+  ATTESTATION_INSCRIPTION
+  RELEVE_DE_NOTES
+  CERTIFICAT_SCOLARITE
+  DEMANDE_INFORMATION
+}
+
+enum RequestStatus {
+  SOUMISE
+  EN_TRAITEMENT
+  TRAITEE
+  REJETEE
+}
+
+model AuditLog {
+  id         String          @id @default(uuid()) @db.Char(36)
+  entityType AuditEntityType
+  entityId   String?         @db.Char(36)
+  action     AuditAction
+  actorType  AuditActorType
+  actorId    String?         @db.Char(36)
+  actorName  String          @db.VarChar(191)
+  actorRole  String?         @db.VarChar(50)
+  campusId   String?         @db.Char(36)
+  summary    String          @db.VarChar(255)
+  beforeData Json?
+  afterData  Json?
+  createdAt  DateTime        @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorType, actorId])
+  @@index([campusId, createdAt])
+  @@index([createdAt])
+}
+
+model Campus {
+  id          String          @id @default(uuid()) @db.Char(36)
+  code        String          @unique @db.VarChar(20)
+  nom         String          @db.VarChar(120)
+  adresse     String?         @db.VarChar(191)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  departments Department[]
+  classes     AcademicClass[]
+  professors  Professor[]
+  adminUsers  AdminUser[]
+}
+
+model Department {
+  id         String          @id @default(uuid()) @db.Char(36)
+  code       String          @unique @db.VarChar(30)
+  nom        String          @db.VarChar(120)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  campusId   String          @db.Char(36)
+  campus     Campus          @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  classes    AcademicClass[]
+  professors Professor[]
+  adminUsers AdminUser[]
+}
+
+model AcademicClass {
+  id                  String               @id @default(uuid()) @db.Char(36)
+  nom                 String               @db.VarChar(120)
+  code                String?              @unique @db.VarChar(50)
+  academicYear        String               @db.VarChar(9)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  campusId            String               @db.Char(36)
+  departmentId        String               @db.Char(36)
+  programId           String               @db.Char(36)
+  campus              Campus               @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  department          Department           @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  program             Program              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  enrollments         Enrollment[]
+  teachingAssignments TeachingAssignment[]
+
+  @@unique([programId, campusId, departmentId, academicYear, nom])
+}
+
+model Professor {
+  id           String               @id @default(uuid()) @db.Char(36)
+  nom          String               @db.VarChar(100)
+  prenom       String               @db.VarChar(100)
+  email        String               @unique @db.VarChar(191)
+  telephone    String?              @db.VarChar(30)
+  password     String               @db.VarChar(255)
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  campusId     String?              @db.Char(36)
+  departmentId String?              @db.Char(36)
+  campus       Campus?              @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  department   Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  assignments  TeachingAssignment[]
+}
+
+model TeachingAssignment {
+  id           String         @id @default(uuid()) @db.Char(36)
+  academicYear String         @db.VarChar(9)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  professorId  String         @db.Char(36)
+  courseId     String         @db.Char(36)
+  classId      String?        @db.Char(36)
+  professor    Professor      @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  class        AcademicClass? @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([professorId, courseId, classId, academicYear])
+}
+model ActiveSession {
+  id            String         @id @default(uuid()) @db.Char(36)
+  actorType     AuditActorType
+  actorId       String         @db.Char(36)
+  portal        String         @db.VarChar(30)
+  sessionId     String         @db.VarChar(128)
+  ipAddress     String?        @db.VarChar(80)
+  userAgent     String?        @db.VarChar(500)
+  createdAt     DateTime       @default(now())
+  lastSeenAt    DateTime       @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?        @db.VarChar(80)
+
+  @@index([actorType, actorId, revokedAt])
+  @@index([sessionId])
+  @@index([expiresAt])
+}

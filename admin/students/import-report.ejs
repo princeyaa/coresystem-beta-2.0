@@ -1,0 +1,515 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Rapport import étudiants' ,
+    session: typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeReport=typeof report !=='undefined' && report ? report : {}; var counts=safeReport.counts || {}; var
+        rows=Array.isArray(safeReport.rows) ? safeReport.rows : []; var
+        invalidRows=Array.isArray(safeReport.invalidRows) ? safeReport.invalidRows : []; var
+        createdRows=rows.filter(function(row) { return row.status==='created' ; }); var
+        updatedRows=rows.filter(function(row) { return row.status==='updated' ; }); var
+        rejectedRows=rows.filter(function(row) { return row.status==='rejected' ; }); var
+        totalRows=Number(counts.totalRows || rows.length + invalidRows.length || 0); var
+        createdCount=Number(counts.createdCount || createdRows.length || 0); var updatedCount=Number(counts.updatedCount
+        || updatedRows.length || 0); var rejectedCount=Number(counts.rejectedCount || rejectedRows.length +
+        invalidRows.length || 0); var warningCount=Number(counts.warningCount || 0); var successCount=createdCount +
+        updatedCount; var reportStatus=rejectedCount> 0 ? 'Partiel' : 'Terminé';
+
+        function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+        return fallback || '-';
+        }
+
+        return value;
+        }
+
+        function fullName(row) {
+        if (!row) return '-';
+
+        if (row.nomComplet) {
+        return row.nomComplet;
+        }
+
+        if (row.display && row.display.nomComplet) {
+        return row.display.nomComplet;
+        }
+
+        if (row.display && row.display.fullName) {
+        return row.display.fullName;
+        }
+
+        return [
+        row.prenom || '',
+        row.nom || ''
+        ].join(' ').trim() || '-';
+        }
+        function rowEmail(row) {
+        if (!row) return '-';
+        if (row.email) return row.email;
+        if (row.display && row.display.email) return row.display.email;
+        return 'Email non renseigné';
+        }
+
+        function rowTelephone(row) {
+        if (!row) return '-';
+        if (row.telephone) return row.telephone;
+        if (row.display && row.display.telephone) return row.display.telephone;
+        return 'Téléphone non renseigné';
+        }
+
+        function rowAcademicYear(row) {
+        if (!row) return '-';
+        if (row.academicYear) return row.academicYear;
+        if (row.display && row.display.academicYear) return row.display.academicYear;
+        return '-';
+        }
+
+        function rowProgram(row) {
+        if (!row) return { filiere: '-', niveau: '-' };
+
+        if (row.filiere || row.niveau) {
+        return {
+        filiere: row.filiere || '-',
+        niveau: row.niveau || '-',
+        };
+        }
+
+        if (row.display && row.display.programLabel) {
+        return {
+        filiere: row.display.programLabel,
+        niveau: '',
+        };
+        }
+
+        return { filiere: '-', niveau: '-' };
+        }
+
+        function rowClassCode(row) {
+        if (!row) return '-';
+        if (row.classCode) return row.classCode;
+        if (row.display && row.display.classCode) return row.display.classCode;
+        if (row.display && row.display.classLabel) return row.display.classLabel;
+        return '-';
+        }
+
+        function statusLabel(status) {
+        if (status === 'created') return 'Créé';
+        if (status === 'updated') return 'Mis à jour';
+        if (status === 'rejected') return 'Rejeté';
+        return 'Inconnu';
+        }
+
+        function statusBadgeClass(status) {
+        if (status === 'created') return 'badge-success';
+        if (status === 'updated') return 'badge-info';
+        if (status === 'rejected') return 'badge-danger';
+        return 'badge-neutral';
+        }
+
+        function hasMessages(messages) {
+        return Array.isArray(messages) && messages.length > 0;
+        }
+        %>
+
+        <div class="cs-back-row">
+            <a class="cs-back-link" href="/admin/students">
+                ← Retour aux étudiants
+            </a>
+        </div>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Étudiants</span>
+
+                <h1>Rapport import étudiants</h1>
+
+                <p>
+                    Résultat final de l’import. CoreSystem distingue les étudiants créés,
+                    les dossiers mis à jour, les lignes rejetées et les avertissements.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-secondary" href="/admin/students/import">
+                    Nouvel import
+                </a>
+
+                <a class="btn btn-primary" href="/admin/students">
+                    Voir les étudiants
+                </a>
+            </div>
+        </section>
+
+        <section class="cs-import-steps">
+            <article class="cs-import-step is-done">
+                <span>✓</span>
+                <div>
+                    <strong>Upload</strong>
+                    <small>Fichier reçu</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step is-done">
+                <span>✓</span>
+                <div>
+                    <strong>Preview</strong>
+                    <small>Lignes vérifiées</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step is-done">
+                <span>✓</span>
+                <div>
+                    <strong>Confirmation</strong>
+                    <small>Import exécuté</small>
+                </div>
+            </article>
+
+            <article class="cs-import-step is-active">
+                <span>✓</span>
+                <div>
+                    <strong>Rapport</strong>
+                    <small>Résultat final</small>
+                </div>
+            </article>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">📄</div>
+                <div>
+                    <strong>
+                        <%= totalRows %>
+                    </strong>
+                    <span>Lignes traitées</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">✅</div>
+                <div>
+                    <strong>
+                        <%= successCount %>
+                    </strong>
+                    <span>Lignes importées</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">⚠️</div>
+                <div>
+                    <strong>
+                        <%= rejectedCount %>
+                    </strong>
+                    <span>Lignes rejetées</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-import-report-summary">
+            <article class="cs-import-report-card is-success">
+                <span>Créations</span>
+                <strong>
+                    <%= createdCount %>
+                </strong>
+                <p>Nouveaux étudiants créés dans CoreSystem.</p>
+            </article>
+
+            <article class="cs-import-report-card is-info">
+                <span>Mises à jour</span>
+                <strong>
+                    <%= updatedCount %>
+                </strong>
+                <p>Dossiers étudiants existants mis à jour.</p>
+            </article>
+
+            <article class="cs-import-report-card <%= rejectedCount > 0 ? 'is-danger' : 'is-success' %>">
+                <span>Rejets</span>
+                <strong>
+                    <%= rejectedCount %>
+                </strong>
+                <p>Lignes non importées à cause d’erreurs bloquantes.</p>
+            </article>
+
+            <article class="cs-import-report-card is-warning">
+                <span>Avertissements</span>
+                <strong>
+                    <%= warningCount %>
+                </strong>
+                <p>Points à vérifier, sans forcément bloquer l’import.</p>
+            </article>
+        </section>
+
+        <section class="cs-import-final-panel <%= rejectedCount > 0 ? 'is-partial' : 'is-complete' %>">
+            <div>
+                <h2>État final : <%= reportStatus %>
+                </h2>
+
+                <% if (rejectedCount> 0) { %>
+                    <p>
+                        L’import est terminé, mais certaines lignes ont été rejetées.
+                        Consultez la liste des rejets pour corriger le fichier source si nécessaire.
+                    </p>
+                    <% } else { %>
+                        <p>
+                            L’import est terminé sans erreur bloquante.
+                            Vous pouvez maintenant consulter la liste des étudiants.
+                        </p>
+                        <% } %>
+            </div>
+
+            <div class="cs-import-final-meta">
+                <span>
+                    Confirmé le :
+                    <strong>
+                        <%= safeReport.confirmedAt ? helpers.formatDateTime(safeReport.confirmedAt) : '-' %>
+                    </strong>
+                </span>
+
+                <span>
+                    Rapport généré :
+                    <strong>
+                        <%= safeReport.generatedAt ? helpers.formatDateTime(safeReport.generatedAt) : '-' %>
+                    </strong>
+                </span>
+            </div>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Lignes importées</h2>
+                    <p>
+                        Étudiants créés ou mis à jour pendant cet import.
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= rows.length %>
+                </span>
+            </div>
+
+            <% if (!rows.length) { %>
+                <div class="empty-state compact" style="margin: 18px;">
+                    Aucune ligne importée.
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-import-report-table">
+                            <thead>
+                                <tr>
+                                    <th>Ligne</th>
+                                    <th>Étudiant</th>
+                                    <th>Contact</th>
+                                    <th>Année</th>
+                                    <th>Programme</th>
+                                    <th>Classe</th>
+                                    <th>Statut</th>
+                                    <th>Avertissements</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% rows.forEach(function(row) { var warnings=Array.isArray(row.warnings) ? row.warnings
+                                    : []; %>
+                                    <tr>
+                                        <td>
+                                            <span class="cs-row-number">
+                                                #<%= safeText(row.rowNumber, '-' ) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= fullName(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                Matricule : <%= safeText(row.matricule, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= safeText(rowEmail(row), 'Email non renseigné' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(rowTelephone(row), 'Téléphone non renseigné' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(rowAcademicYear(row), '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% var programInfo=rowProgram(row); %>
+
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(programInfo.filiere, '-' ) %>
+                                                </div>
+
+                                                <% if (programInfo.niveau) { %>
+                                                    <div class="cs-cell-muted">
+                                                        <%= safeText(programInfo.niveau, '-' ) %>
+                                                    </div>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(rowClassCode(row), '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge <%= statusBadgeClass(row.status) %>">
+                                                <%= statusLabel(row.status) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <% if (hasMessages(warnings)) { %>
+                                                <ul class="cs-import-message-list">
+                                                    <% warnings.forEach(function(warning) { %>
+                                                        <li>
+                                                            <%= warning %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                                    <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Lignes rejetées ou invalides</h2>
+                    <p>
+                        Ces lignes n’ont pas été importées.
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= invalidRows.length + rejectedRows.length %>
+                </span>
+            </div>
+
+            <% if (!invalidRows.length && !rejectedRows.length) { %>
+                <div class="empty-state compact" style="margin: 18px;">
+                    Aucune ligne rejetée.
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-import-report-table">
+                            <thead>
+                                <tr>
+                                    <th>Ligne</th>
+                                    <th>Étudiant</th>
+                                    <th>Contact</th>
+                                    <th>Année</th>
+                                    <th>Programme</th>
+                                    <th>Classe</th>
+                                    <th>Erreurs</th>
+                                    <th>Avertissements</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% invalidRows.concat(rejectedRows).forEach(function(row) { var
+                                    errors=Array.isArray(row.errors) ? row.errors : []; var
+                                    warnings=Array.isArray(row.warnings) ? row.warnings : []; %>
+                                    <tr>
+                                        <td>
+                                            <span class="cs-row-number is-danger">
+                                                #<%= safeText(row.rowNumber, '-' ) %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= fullName(row) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                Matricule : <%= safeText(row.matricule, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong cs-text-safe">
+                                                <%= safeText(row.email, 'Email non renseigné' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(row.telephone, 'Téléphone non renseigné' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(row.academicYear, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(row.filiere, '-' ) %>
+                                            </div>
+
+                                            <div class="cs-cell-muted">
+                                                <%= safeText(row.niveau, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="cs-cell-strong">
+                                                <%= safeText(row.classCode, '-' ) %>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (hasMessages(errors)) { %>
+                                                <ul class="cs-import-message-list is-danger">
+                                                    <% errors.forEach(function(errorMessage) { %>
+                                                        <li>
+                                                            <%= errorMessage %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Erreur non précisée</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (hasMessages(warnings)) { %>
+                                                <ul class="cs-import-message-list">
+                                                    <% warnings.forEach(function(warning) { %>
+                                                        <li>
+                                                            <%= warning %>
+                                                        </li>
+                                                        <% }) %>
+                                                </ul>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Aucun avertissement</span>
+                                                    <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <%- include('../../partials/footer') %>

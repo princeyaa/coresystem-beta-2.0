@@ -1,0 +1,350 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Professeur' , session:
+    typeof session !=='undefined' ? session : null }) %>
+
+    <% var p=typeof professor !=='undefined' && professor ? professor : {}; var safeCampuses=Array.isArray(campuses) ?
+        campuses : []; var safeDepartments=Array.isArray(departments) ? departments : []; var isEdit=Boolean(p && p.id);
+        var backUrl=isEdit ? '/admin/professors/' + p.id : '/admin/professors' ; function safeText(value, fallback) { if
+        (value===null || typeof value==='undefined' || value==='' ) { return fallback || '' ; } return value; } function
+        selected(value, expected) { return String(value || '' )===String(expected || '' ) ? 'selected' : '' ; } function
+        campusLabel(campus) { if (!campus) return 'Campus' ; var parts=[]; if (campus.nom) parts.push(campus.nom); if
+        (campus.code) parts.push(campus.code); return parts.join(' - ');
+    }
+
+    function departmentLabel(department) {
+        if (!department) return ' Departement'; var parts=[]; if (department.nom) parts.push(department.nom); if
+        (department.code) parts.push(department.code); if (department.campus && department.campus.nom)
+        parts.push(department.campus.nom); return parts.join(' - ');
+    }
+
+    var professorName = [
+        p.prenom || '',
+        p.nom || ''
+    ].join(' ').trim() || ' Nouveau professeur'; %>
+
+        <div class="cs-back-row">
+            <a class="cs-back-link" href="<%= backUrl %>">
+                &larr; <%= isEdit ? 'Retour a la fiche professeur' : 'Retour aux professeurs' %>
+            </a>
+        </div>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module Professeurs</span>
+
+                <h1>
+                    <%= pageTitle || (isEdit ? 'Modifier le professeur' : 'Nouveau professeur' ) %>
+                </h1>
+
+                <p>
+                    Creez ou modifiez le compte professeur. Le professeur n'est pas un admin :
+                    ses droits viennent surtout de ses affectations pedagogiques.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <% if (isEdit) { %>
+                    <a class="btn btn-secondary" href="/admin/professors/<%= p.id %>">
+                        Voir la fiche
+                    </a>
+                    <% } %>
+
+                        <a class="btn btn-secondary" href="/admin/professors">
+                            Liste professeurs
+                        </a>
+            </div>
+        </section>
+
+        <% if (typeof error !=='undefined' && error) { %>
+            <div class="alert alert-error">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <form class="cs-professor-form" method="POST" action="<%= formAction %>">
+                    <%- include('../../partials/csrf') %>
+
+                        <section class="cs-form-layout">
+                            <div class="cs-form-main">
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Identite professeur</h2>
+                                            <p>Informations principales du compte portail professeur.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-form-grid cs-form-grid-2">
+                                        <div class="cs-form-field">
+                                            <label for="prenom">Prenom *</label>
+                                            <input id="prenom" name="prenom" type="text"
+                                                value="<%= safeText(p.prenom, '') %>" placeholder="Ex : Moussa"
+                                                autocomplete="off" required>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="nom">Nom *</label>
+                                            <input id="nom" name="nom" type="text" value="<%= safeText(p.nom, '') %>"
+                                                placeholder="Ex : Traore" autocomplete="off" required>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="email">Email *</label>
+                                            <input id="email" name="email" type="email"
+                                                value="<%= safeText(p.email, '') %>"
+                                                placeholder="professeur@example.com" autocomplete="off" required>
+                                            <p>L'email sert a la connexion professeur.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="telephone">Telephone</label>
+                                            <input id="telephone" name="telephone" type="text"
+                                                value="<%= safeText(p.telephone, '') %>" placeholder="Ex : 650000000"
+                                                autocomplete="off">
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Rattachement administratif</h2>
+                                            <p>
+                                                Le campus limite le perimetre local. Le departement reste une
+                                                information metier.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-form-grid cs-form-grid-2">
+                                        <div class="cs-form-field">
+                                            <label for="campusId">Campus</label>
+                                            <select id="campusId" name="campusId">
+                                                <option value="">Aucun / Non defini</option>
+
+                                                <% safeCampuses.forEach(function(campus) { %>
+                                                    <option value="<%= campus.id %>" <%=selected(p.campusId, campus.id)
+                                                        %>
+                                                        >
+                                                        <%= campusLabel(campus) %>
+                                                    </option>
+                                                    <% }) %>
+                                            </select>
+                                            <p>Pour ADMIN_CAMPUS, la liste est deja limitee a son campus.</p>
+                                        </div>
+
+                                        <div class="cs-form-field">
+                                            <label for="departmentId">Departement</label>
+                                            <select id="departmentId" name="departmentId">
+                                                <option value="">Tous / Non defini</option>
+
+                                                <% safeDepartments.forEach(function(department) { %>
+                                                    <option value="<%= department.id %>"
+                                                        data-campus-id="<%= department.campusId || '' %>"
+                                                        <%=selected(p.departmentId, department.id) %>
+                                                        >
+                                                        <%= departmentLabel(department) %>
+                                                    </option>
+                                                    <% }) %>
+                                            </select>
+                                            <p>Le departement classe le professeur sans remplacer les affectations.</p>
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="cs-form-card">
+                                    <div class="cs-form-card-head">
+                                        <div>
+                                            <h2>Resume avant validation</h2>
+                                            <p>Verifiez les informations principales avant d'enregistrer.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="cs-professor-form-preview">
+                                        <div>
+                                            <span>Professeur</span>
+                                            <strong data-preview="name">
+                                                <%= professorName %>
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Email</span>
+                                            <strong data-preview="email">
+                                                <%= safeText(p.email, 'Non defini' ) %>
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Telephone</span>
+                                            <strong data-preview="telephone">
+                                                <%= safeText(p.telephone, 'Non defini' ) %>
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Campus</span>
+                                            <strong data-preview="campus">A selectionner</strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Departement</span>
+                                            <strong data-preview="department">A selectionner</strong>
+                                        </div>
+
+                                        <div>
+                                            <span>Type de compte</span>
+                                            <strong>Portail professeur</strong>
+                                        </div>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <aside class="cs-form-side">
+                                <article class="cs-form-help-card">
+                                    <div class="cs-form-help-icon">PR</div>
+
+                                    <h2>
+                                        <%= isEdit ? 'Modification professeur' : 'Creation professeur' %>
+                                    </h2>
+
+                                    <% if (isEdit) { %>
+                                        <p>
+                                            Les changements peuvent impacter l'acces du professeur a son portail,
+                                            mais pas directement ses affectations deja creees.
+                                        </p>
+                                        <% } else { %>
+                                            <p>
+                                                A la creation, le systeme genere un mot de passe temporaire pour le
+                                                compte professeur.
+                                            </p>
+                                            <% } %>
+                                </article>
+
+                                <article class="cs-form-help-card">
+                                    <div class="cs-form-help-icon">CP</div>
+
+                                    <h2>Regle campus</h2>
+
+                                    <p>
+                                        Un ADMIN_CAMPUS ne gere que les professeurs rattaches a son campus.
+                                        Le SUPER_ADMIN garde une vision globale.
+                                    </p>
+                                </article>
+
+                                <article class="cs-form-help-card">
+                                    <div class="cs-form-help-icon">AF</div>
+
+                                    <h2>Affectations</h2>
+
+                                    <p>
+                                        Les cours, classes et annees du professeur se gerent dans le module
+                                        Affectations.
+                                        Ce formulaire ne remplace pas cette logique.
+                                    </p>
+                                </article>
+
+                                <article class="cs-form-actions-card">
+                                    <button class="btn btn-primary" type="submit">
+                                        <%= submitLabel || (isEdit ? 'Enregistrer' : 'Creer le professeur' ) %>
+                                    </button>
+
+                                    <a class="btn btn-secondary" href="<%= backUrl %>">
+                                        Annuler
+                                    </a>
+                                </article>
+                            </aside>
+                        </section>
+                </form>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var campusSelect = document.getElementById('campusId');
+                        var departmentSelect = document.getElementById('departmentId');
+                        var prenomInput = document.getElementById('prenom');
+                        var nomInput = document.getElementById('nom');
+                        var emailInput = document.getElementById('email');
+                        var telephoneInput = document.getElementById('telephone');
+
+                        var departmentOptions = departmentSelect
+                            ? Array.prototype.slice.call(departmentSelect.options)
+                            : [];
+
+                        function getSelectedText(select) {
+                            if (!select || !select.value) {
+                                return 'A selectionner';
+                            }
+
+                            var option = select.options[select.selectedIndex];
+
+                            return option ? option.textContent.trim() : 'A selectionner';
+                        }
+
+                        function setPreview(name, value) {
+                            var element = document.querySelector('[data-preview="' + name + '"]');
+
+                            if (!element) return;
+
+                            element.textContent = value && String(value).trim()
+                                ? String(value).trim()
+                                : 'Non defini';
+                        }
+
+                        function syncDepartmentsWithCampus() {
+                            if (!campusSelect || !departmentSelect) return;
+
+                            var selectedCampusId = campusSelect.value;
+
+                            departmentOptions.forEach(function (option) {
+                                if (!option.value) {
+                                    option.hidden = false;
+                                    return;
+                                }
+
+                                var optionCampusId = option.getAttribute('data-campus-id');
+                                var shouldShow = !selectedCampusId || optionCampusId === selectedCampusId;
+
+                                option.hidden = !shouldShow;
+
+                                if (!shouldShow && option.selected) {
+                                    departmentSelect.value = '';
+                                }
+                            });
+                        }
+
+                        function syncPreview() {
+                            var fullName = [
+                                prenomInput ? prenomInput.value : '',
+                                nomInput ? nomInput.value : ''
+                            ].join(' ').trim();
+
+                            setPreview('name', fullName);
+                            setPreview('email', emailInput ? emailInput.value : '');
+                            setPreview('telephone', telephoneInput ? telephoneInput.value : '');
+                            setPreview('campus', getSelectedText(campusSelect));
+                            setPreview('department', getSelectedText(departmentSelect));
+                        }
+
+                        if (campusSelect && campusSelect.options.length === 2 && !campusSelect.value) {
+                            campusSelect.selectedIndex = 1;
+                        }
+
+                        [campusSelect, departmentSelect, prenomInput, nomInput, emailInput, telephoneInput].forEach(function (field) {
+                            if (!field) return;
+
+                            field.addEventListener('input', function () {
+                                syncDepartmentsWithCampus();
+                                syncPreview();
+                            });
+
+                            field.addEventListener('change', function () {
+                                syncDepartmentsWithCampus();
+                                syncPreview();
+                            });
+                        });
+
+                        syncDepartmentsWithCampus();
+                        syncPreview();
+                    });
+                </script>
+
+                <%- include('../../partials/footer') %>

@@ -1,0 +1,111 @@
+<%
+    var footerSession = typeof session !== 'undefined' && session ? session : {};
+    var isShellFooter = Boolean(footerSession.adminId || footerSession.professorId || footerSession.userId);
+%>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var body = document.body;
+            var menuToggle = document.getElementById('csAdminMenuToggle');
+            var backdrop = document.getElementById('csAdminSidebarBackdrop');
+            var themeToggle = document.getElementById('csThemeToggle');
+
+            function cleanPath(value) {
+                return String(value || '').split('?')[0].replace(/\/+$/, '') || '/';
+            }
+
+            function markActiveLinks() {
+                var currentPath = cleanPath(window.location.pathname);
+                var links = document.querySelectorAll('.cs-admin-nav-link[data-admin-path]');
+
+                links.forEach(function (link) {
+                    var basePath = cleanPath(link.getAttribute('data-admin-path'));
+                    var contains = link.getAttribute('data-active-contains');
+
+                    var isActive = currentPath === basePath || currentPath.indexOf(basePath + '/') === 0;
+
+                    if (contains) {
+                        isActive = currentPath.indexOf(contains) !== -1;
+                    }
+
+                    if (
+                        currentPath.indexOf('/professor/assignments') === 0 &&
+                        currentPath.indexOf('/grades') !== -1 &&
+                        link.textContent.indexOf('Affectations') !== -1
+                    ) {
+                        isActive = false;
+                    }
+
+                    link.classList.toggle('is-active', isActive);
+
+                    if (isActive) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            function setTheme(theme) {
+                document.documentElement.setAttribute('data-cs-theme', theme);
+
+                try {
+                    localStorage.setItem('coresystem.theme', theme);
+                } catch (error) { }
+
+                if (!themeToggle) return;
+
+                var icon = themeToggle.querySelector('.cs-theme-icon');
+                var label = themeToggle.querySelector('.cs-theme-label');
+
+                if (theme === 'dark') {
+                    if (icon) icon.textContent = '☀️';
+                    if (label) label.textContent = 'Mode clair';
+                } else {
+                    if (icon) icon.textContent = '🌙';
+                    if (label) label.textContent = 'Mode sombre';
+                }
+            }
+
+            function getTheme() {
+                return document.documentElement.getAttribute('data-cs-theme') || 'light';
+            }
+
+            markActiveLinks();
+            setTheme(getTheme());
+
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function () {
+                    var nextTheme = getTheme() === 'dark' ? 'light' : 'dark';
+                    setTheme(nextTheme);
+                });
+            }
+
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function () {
+                    body.classList.toggle('cs-admin-nav-open');
+                });
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', function () {
+                    body.classList.remove('cs-admin-nav-open');
+                });
+            }
+
+            document.querySelectorAll('[data-confirm]').forEach(function (element) {
+                element.addEventListener('click', function (event) {
+                    var message = element.getAttribute('data-confirm') || 'Confirmer cette action ?';
+
+                    if (!window.confirm(message)) {
+                        event.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

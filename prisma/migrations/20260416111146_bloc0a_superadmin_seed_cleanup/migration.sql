@@ -1,0 +1,9 @@
+-- DropIndex
+DROP INDEX `Student_email_key` ON `student`;
+
+-- AlterTable
+ALTER TABLE `adminuser` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true,
+    MODIFY `role` ENUM('SUPER_ADMIN', 'SCOLARITE', 'RESPONSABLE_ACADEMIQUE', 'DECIDEUR') NOT NULL DEFAULT 'SCOLARITE';
+
+-- AlterTable
+ALTER TABLE `professor` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true;

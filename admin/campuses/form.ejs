@@ -1,0 +1,98 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Campus',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var c = typeof campus !== 'undefined' && campus ? campus : {};
+    var isEdit = Boolean(c && c.id);
+    var backUrl = '/admin/campuses';
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        &larr; Retour aux campus
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Configuration administrative</span>
+
+        <h1><%= pageTitle || (isEdit ? 'Modifier le campus' : 'Nouveau campus') %></h1>
+
+        <p>
+            Un campus représente un site physique ou administratif de l’établissement.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/campuses">
+            Liste campus
+        </a>
+    </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<form class="cs-config-form" method="POST" action="<%= formAction %>">
+    <%- include('../../partials/csrf') %>
+
+    <section class="cs-form-layout">
+        <div class="cs-form-main">
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Informations campus</h2>
+                        <p>Code, nom et adresse du site.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid cs-form-grid-2">
+                    <div class="cs-form-field">
+                        <label for="code">Code *</label>
+                        <input id="code" name="code" type="text" value="<%= safeText(c.code, '') %>" placeholder="Ex : BDL" required>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="nom">Nom *</label>
+                        <input id="nom" name="nom" type="text" value="<%= safeText(c.nom, '') %>" placeholder="Ex : Badalabougou" required>
+                    </div>
+
+                    <div class="cs-form-field cs-config-wide-field">
+                        <label for="adresse">Adresse</label>
+                        <input id="adresse" name="adresse" type="text" value="<%= safeText(c.adresse, '') %>" placeholder="Adresse du campus">
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="cs-form-side">
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">CP</div>
+                <h2>Campus</h2>
+                <p>Le campus sert au découpage des accès ADMIN_CAMPUS et à l’organisation des classes.</p>
+            </article>
+
+            <article class="cs-form-actions-card">
+                <button class="btn btn-primary" type="submit">
+                    <%= submitLabel || (isEdit ? 'Enregistrer' : 'Créer le campus') %>
+                </button>
+
+                <a class="btn btn-secondary" href="<%= backUrl %>">Annuler</a>
+            </article>
+        </aside>
+    </section>
+</form>
+
+<%- include('../../partials/footer') %>

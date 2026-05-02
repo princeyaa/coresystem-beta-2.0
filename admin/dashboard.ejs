@@ -1,0 +1,262 @@
+<%- include('../partials/header', { title: 'Tableau de bord' , session: session, currentPath: '/admin/dashboard' }) %>
+
+    <% const safeStats=typeof stats !=='undefined' && stats ? stats : {}; const safeCharts=typeof charts !=='undefined'
+        && charts ? charts : (typeof chartData !=='undefined' && chartData ? chartData : {}); const
+        safeConfigurationError=typeof configurationError !=='undefined' ? configurationError : null; const
+        isSuperAdmin=admin && admin.role==='SUPER_ADMIN' ; const adminName=admin ? `${admin.prenom || '' } ${admin.nom
+        || '' }`.trim() : 'Administrateur' ; const campusName=admin && admin.campus ? admin.campus.nom : null; const
+        colorShift=Math.floor(Math.random() * 360); function n(value) { return Number.isFinite(Number(value)) ?
+        Number(value) : 0; } function totalOf(items) { return Array.isArray(items) ? items.reduce((sum, item)=> sum +
+        n(item.value), 0)
+        : 0;
+        }
+
+        function donutSegments(items, shift) {
+        const total = totalOf(items);
+
+        if (!Array.isArray(items) || !total) {
+        return '#e5e7eb 0deg 360deg';
+        }
+
+        let start = 0;
+
+        return items.map((item, index) => {
+        const value = n(item.value);
+        const angle = (value / total) * 360;
+        const end = start + angle;
+        const color = `hsl(${(shift + index * 78) % 360} 74% 53%)`;
+        const segment = `${color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
+        start = end;
+        return segment;
+        }).join(', ');
+        }
+
+        function dotColor(index, shift) {
+        return `hsl(${(shift + index * 78) % 360} 74% 53%)`;
+        }
+
+        const statCards = isSuperAdmin
+        ? [
+        { label: 'Campus', value: n(safeStats.campusCount), icon: '🏛️' },
+        { label: 'Étudiants', value: n(safeStats.studentCount), icon: '🎓' },
+        { label: 'Professeurs', value: n(safeStats.professorCount), icon: '👨‍🏫' },
+        { label: 'Classes', value: n(safeStats.classCount), icon: '🏫' },
+        { label: 'Demandes soumises', value: n(safeStats.submittedRequestCount), icon: '📩' },
+        { label: 'Notes non publiées', value: n(safeStats.unpublishedGradeCount), icon: '📊' },
+        ]
+        : [
+        { label: 'Étudiants', value: n(safeStats.studentCount), icon: '🎓' },
+        { label: 'Professeurs', value: n(safeStats.professorCount), icon: '👨‍🏫' },
+        { label: 'Classes', value: n(safeStats.classCount), icon: '🏫' },
+        { label: 'Affectations', value: n(safeStats.assignmentCount), icon: '🧩' },
+        { label: 'Demandes soumises', value: n(safeStats.submittedRequestCount), icon: '📩' },
+        { label: 'Notes non publiées', value: n(safeStats.unpublishedGradeCount), icon: '📊' },
+        ];
+
+        const moduleCards = [
+        { title: 'Étudiants', icon: '🎓', description: 'Dossiers, inscriptions et rattachements.', href:
+        '/admin/students' },
+        { title: 'Professeurs', icon: '👨‍🏫', description: 'Comptes, profils et rattachements.', href:
+        '/admin/professors' },
+        { title: 'Classes', icon: '🏫', description: 'Étudiants, cours, notes et historique.', href: '/admin/classes' },
+        {
+        title: 'Affectations',
+        icon: '🧩',
+        description: 'Professeurs, cours et classes.',
+        href: '/admin/assignments'
+        },
+        { title: 'Notes', icon: '📊', description: 'Suivi, publication et importation.', href: '/admin/grades' },
+        { title: 'Demandes', icon: '📩', description: 'Traitement administratif étudiant.', href: '/admin/requests' },
+        { title: 'Annonces', icon: '📢', description: 'Communications officielles.', href: '/admin/announcements' },
+        { title: 'Recherche', icon: '🔎', description: 'Retrouver rapidement une donnée.', href: '/admin/search' },
+        ];
+
+        if (isSuperAdmin) {
+        moduleCards.push(
+        { title: 'Utilisateurs admin', icon: '🛡️', description: 'Comptes administratifs et accès.', href:
+        '/admin/users' },
+        { title: 'Campus', icon: '🏛️', description: 'Sites et structure globale.', href: '/admin/campuses' },
+        { title: 'Départements', icon: '🧭', description: 'Unités académiques par campus.', href: '/admin/departments'
+        },
+        { title: 'Cours / Matières', icon: '📖', description: 'Programmes, crédits et coefficients.', href:
+        '/admin/courses' }
+        );
+        }
+
+        const chartCards = [
+        { title: 'Demandes par statut', items: Array.isArray(safeCharts.requestStatus) ? safeCharts.requestStatus : []
+        },
+        { title: 'Publication des notes', items: Array.isArray(safeCharts.gradePublication) ?
+        safeCharts.gradePublication : [] },
+        { title: isSuperAdmin ? 'Étudiants par campus' : 'Effectif campus', items:
+        Array.isArray(safeCharts.studentDistribution) ? safeCharts.studentDistribution : [] },
+        ];
+        %>
+
+        <section class="cs-admin-dashboard">
+            <% if (safeConfigurationError) { %>
+                <div class="alert alert-error">
+                    <%= safeConfigurationError %>
+                </div>
+                <% } %>
+
+                    <header class="cs-admin-identity-bar">
+                        <div class="cs-admin-identity">
+                            <div class="cs-admin-avatar">
+                                <%= adminName.charAt(0).toUpperCase() %>
+                            </div>
+
+                            <div>
+                                <strong>
+                                    <%= adminName %>
+                                </strong>
+                                <span>
+                                    <%= admin.role %>
+                                        <% if (campusName) { %>
+                                            • <%= campusName %>
+                                                <% } %>
+                                </span>
+                            </div>
+                        </div>
+
+                        <form action="/admin/search" method="GET" class="cs-admin-searchbar">
+                            <input type="search" name="q" placeholder="Rechercher..."
+                                aria-label="Recherche globale admin">
+                            <button type="submit">Rechercher</button>
+                        </form>
+                    </header>
+
+                    <section class="cs-admin-stat-grid">
+                        <% statCards.forEach((card)=> { %>
+                            <article class="cs-admin-stat-card">
+                                <div class="cs-admin-stat-icon">
+                                    <%= card.icon %>
+                                </div>
+
+                                <div class="cs-admin-stat-content">
+                                    <strong>
+                                        <%= card.value %>
+                                    </strong>
+                                    <span>
+                                        <%= card.label %>
+                                    </span>
+                                </div>
+                            </article>
+                            <% }) %>
+                    </section>
+
+                    <section class="cs-dashboard-title-row">
+                        <h2>Modules principaux</h2>
+                    </section>
+
+                    <section class="cs-admin-module-grid">
+                        <% moduleCards.forEach((module)=> { %>
+                            <a href="<%= module.href %>" class="cs-admin-module-card">
+                                <div class="cs-admin-module-icon">
+                                    <%= module.icon %>
+                                </div>
+
+                                <div>
+                                    <h3>
+                                        <%= module.title %>
+                                    </h3>
+                                    <p>
+                                        <%= module.description %>
+                                    </p>
+                                </div>
+
+                                <span>Détail →</span>
+                            </a>
+                            <% }) %>
+                    </section>
+
+                    <section class="cs-dashboard-title-row">
+                        <h2>Statistiques</h2>
+                    </section>
+
+                    <section class="cs-admin-chart-grid">
+                        <% chartCards.forEach((chart, chartIndex)=> { %>
+                            <% const chartTotal=totalOf(chart.items); %>
+
+                                <article class="cs-admin-chart-card">
+                                    <div class="cs-admin-chart-head">
+                                        <h3>
+                                            <%= chart.title %>
+                                        </h3>
+                                        <strong>
+                                            <%= chartTotal %>
+                                        </strong>
+                                    </div>
+
+                                    <% const hasChartData=chart.items.length> 0 && chartTotal > 0;
+                                        const pizzaBackground = hasChartData
+                                        ? `conic-gradient(${donutSegments(chart.items, colorShift + chartIndex * 37)})`
+                                        : 'conic-gradient(var(--admin-border) 0deg 360deg)';
+                                        %>
+
+                                        <div class="cs-admin-pizza-wrap">
+                                            <div class="cs-admin-pizza-shell">
+                                                <div class="cs-admin-pizza <%= hasChartData ? '' : 'is-empty' %>"
+                                                    style="--pizza-bg: <%- pizzaBackground %>;"
+                                                    aria-label="Statistique <%= chart.title %>"></div>
+
+                                                <div class="cs-admin-pizza-badge">
+                                                    <strong>
+                                                        <%= chartTotal %>
+                                                    </strong>
+                                                    <span>Total</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="cs-admin-legend">
+                                                <% if (!hasChartData) { %>
+                                                    <span class="cs-admin-empty-mini">Aucune donnée</span>
+                                                    <% } else { %>
+                                                        <% chart.items.forEach((item, itemIndex)=> { %>
+                                                            <div>
+                                                                <i
+                                                                    style="--dot-color: <%= dotColor(itemIndex, colorShift + chartIndex * 37) %>;"></i>
+
+                                                                <span>
+                                                                    <%= item.label %>
+                                                                </span>
+
+                                                                <strong>
+                                                                    <%= item.value %>
+                                                                </strong>
+                                                            </div>
+                                                            <% }) %>
+                                                                <% } %>
+                                            </div>
+                                        </div>
+                                </article>
+                                <% }) %>
+                    </section>
+        </section>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const chartCards = document.querySelectorAll('.cs-admin-chart-card');
+
+                if (!('IntersectionObserver' in window)) {
+                    chartCards.forEach((card) => card.classList.add('is-visible'));
+                    return;
+                }
+
+                const observer = new IntersectionObserver(
+                    function (entries) {
+                        entries.forEach(function (entry) {
+                            if (entry.isIntersecting) {
+                                entry.target.classList.add('is-visible');
+                                observer.unobserve(entry.target);
+                            }
+                        });
+                    },
+                    { threshold: 0.25 }
+                );
+
+                chartCards.forEach((card) => observer.observe(card));
+            });
+        </script>
+
+        <%- include('../partials/footer') %>

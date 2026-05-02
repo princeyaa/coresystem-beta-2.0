@@ -1,0 +1,489 @@
+﻿<%- include('../../partials/header', {
+    title: 'Creneaux / Emploi du temps',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safeSchedules = Array.isArray(schedules) ? schedules : [];
+    var safeScheduleTraceMap = typeof scheduleTraceMap !== 'undefined' && scheduleTraceMap ? scheduleTraceMap : {};
+
+    var totalSchedules = safeSchedules.length;
+    var normalCount = 0;
+    var modifiedCount = 0;
+    var cancelledCount = 0;
+
+    var days = [];
+    var statuses = [];
+
+    safeSchedules.forEach(function(schedule) {
+        if (schedule.statut === 'NORMAL') {
+            normalCount += 1;
+        }
+
+        if (schedule.statut === 'MODIFIE') {
+            modifiedCount += 1;
+        }
+
+        if (schedule.statut === 'ANNULE') {
+            cancelledCount += 1;
+        }
+
+        if (schedule.jour && days.indexOf(schedule.jour) === -1) {
+            days.push(schedule.jour);
+        }
+
+        if (schedule.statut && statuses.indexOf(schedule.statut) === -1) {
+            statuses.push(schedule.statut);
+        }
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function scheduleInitials(schedule) {
+        if (!schedule || !schedule.jour) {
+            return 'ED';
+        }
+
+        return String(schedule.jour).slice(0, 2).toUpperCase();
+    }
+
+    function courseLabel(schedule) {
+        if (!schedule || !schedule.course) {
+            return 'Cours non defini';
+        }
+
+        return safeText(schedule.course.code, '-') + ' - ' + safeText(schedule.course.nom, '-');
+    }
+
+    function programLabel(schedule) {
+        if (!schedule || !schedule.course || !schedule.course.program) {
+            return 'Programme non defini';
+        }
+
+        return [
+            schedule.course.program.filiere || '',
+            schedule.course.program.niveau || ''
+        ].join(' ').trim() || 'Programme non defini';
+    }
+
+    function statusBadgeClass(status) {
+        if (status === 'NORMAL') return 'badge-success';
+        if (status === 'MODIFIE') return 'badge-warning';
+        if (status === 'ANNULE') return 'badge-danger';
+        return 'badge-neutral';
+    }
+
+    function statusLabel(status) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(status);
+        }
+
+        return safeText(status, '-');
+    }
+
+    function formatDateTimeSafe(value) {
+        if (!value) {
+            return '-';
+        }
+
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatDateTime) {
+            return helpers.formatDateTime(value);
+        }
+
+        return value;
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Module Emploi du temps</span>
+
+        <h1>Creneaux / Emploi du temps</h1>
+
+        <p>
+            Organisez les seances par jour, heure, cours, salle et statut.
+            La V2 devra ensuite passer a la logique annee, classe, semaine, creneaux.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/schedules/new">
+            Nouveau creneau
+        </a>
+    </div>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">ED</div>
+        <div>
+            <strong><%= totalSchedules %></strong>
+            <span>Creneaux affiches</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">OK</div>
+        <div>
+            <strong><%= normalCount %></strong>
+            <span>Normaux</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">MD</div>
+        <div>
+            <strong><%= modifiedCount %></strong>
+            <span>Modifies</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">AN</div>
+        <div>
+            <strong><%= cancelledCount %></strong>
+            <span>Annules</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-schedule-warning-panel">
+    <div>
+        <h2>Structure actuelle</h2>
+        <p>
+            Pour le moment, un creneau est rattache a un cours. La gestion complete par classe et semaine
+            sera une evolution metier separee pour eviter de casser l'existant.
+        </p>
+    </div>
+
+    <span>V1 stable</span>
+</section>
+
+<section class="cs-filter-panel">
+    <div class="cs-filter-panel-head">
+        <div>
+            <h2>Recherche et filtres</h2>
+            <p>
+                Filtrez rapidement les creneaux visibles par cours, programme, salle, jour ou statut.
+            </p>
+        </div>
+
+        <button class="cs-filter-reset" type="button" id="scheduleResetFilters">
+            Reinitialiser
+        </button>
+    </div>
+
+    <form class="cs-schedule-filter-form cs-student-filter-form" onsubmit="return false;">
+        <div class="cs-filter-field cs-filter-field-wide">
+            <label for="scheduleSearch">Recherche</label>
+            <input
+                id="scheduleSearch"
+                type="text"
+                placeholder="Cours, code, programme, salle..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="cs-filter-field">
+            <label for="scheduleDayFilter">Jour</label>
+            <select id="scheduleDayFilter">
+                <option value="">Tous les jours</option>
+
+                <% days.forEach(function(day) { %>
+                    <option value="<%= day %>">
+                        <%= statusLabel(day) %>
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+
+        <div class="cs-filter-field">
+            <label for="scheduleStatusFilter">Statut</label>
+            <select id="scheduleStatusFilter">
+                <option value="">Tous les statuts</option>
+
+                <% statuses.forEach(function(status) { %>
+                    <option value="<%= status %>">
+                        <%= statusLabel(status) %>
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+    </form>
+
+    <div class="cs-active-filter-list" id="scheduleActiveFilters" style="display: none;"></div>
+</section>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des creneaux</h2>
+            <p>
+                <span id="scheduleVisibleCount"><%= safeSchedules.length %></span>
+                resultat<span id="schedulePlural"><%= safeSchedules.length > 1 ? 's' : '' %></span>
+                affiche<span id="schedulePlural2"><%= safeSchedules.length > 1 ? 's' : '' %></span>.
+            </p>
+        </div>
+
+        <span class="cs-table-count" id="scheduleTableCount"><%= safeSchedules.length %></span>
+    </div>
+
+    <% if (!safeSchedules.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucun creneau trouve</h2>
+            <p>Aucun creneau n'est encore disponible dans votre perimetre.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-schedules-table">
+                <thead>
+                    <tr>
+                        <th>Creneau</th>
+                        <th>Cours</th>
+                        <th>Programme</th>
+                        <th>Salle</th>
+                        <th>Statut</th>
+                        <th>Derniere trace</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% safeSchedules.forEach(function(schedule) {
+                        var course = schedule.course || null;
+                        var traceMeta = safeScheduleTraceMap[schedule.id] || null;
+                        var searchText = [
+                            schedule.jour || '',
+                            schedule.heureDebut || '',
+                            schedule.heureFin || '',
+                            schedule.salle || '',
+                            course ? course.code || '' : '',
+                            course ? course.nom || '' : '',
+                            programLabel(schedule),
+                            schedule.statut || ''
+                        ].join(' ').toLowerCase();
+                    %>
+                        <tr
+                            class="cs-schedule-row"
+                            data-search="<%= searchText %>"
+                            data-day="<%= safeText(schedule.jour, '') %>"
+                            data-status="<%= safeText(schedule.statut, '') %>"
+                        >
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar">
+                                        <%= scheduleInitials(schedule) %>
+                                    </div>
+
+                                    <div class="cs-entity-main">
+                                        <span class="cs-entity-title">
+                                            <%= statusLabel(schedule.jour) %>
+                                        </span>
+
+                                        <span class="cs-entity-subtitle">
+                                            <%= safeText(schedule.heureDebut, '-') %>
+                                            -
+                                            <%= safeText(schedule.heureFin, '-') %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= course ? safeText(course.code, '-') : '-' %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    <%= course ? safeText(course.nom, '-') : 'Cours non defini' %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= programLabel(schedule) %>
+                                </div>
+
+                                <div class="cs-cell-muted">
+                                    V1 rattachee au cours
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong">
+                                    <%= safeText(schedule.salle, 'Salle non definie') %>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge <%= statusBadgeClass(schedule.statut) %>">
+                                    <%= statusLabel(schedule.statut) %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <% if (traceMeta) { %>
+                                    <div class="cs-cell-strong cs-text-safe">
+                                        <%= safeText(traceMeta.summary || traceMeta.label, 'Trace') %>
+                                    </div>
+
+                                    <div class="cs-cell-muted">
+                                        <%= safeText(traceMeta.actorName, 'Systeme') %>
+                                        -
+                                        <%= formatDateTimeSafe(traceMeta.createdAt) %>
+                                    </div>
+                                <% } else { %>
+                                    <span class="cs-cell-muted">Aucune trace recente</span>
+                                <% } %>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/schedules/<%= schedule.id %>/edit">
+                                            Modifier
+                                        </a>
+
+                                        <% if (course) { %>
+                                            <a href="/admin/assignments?courseId=<%= course.id %>">
+                                                Affectations du cours
+                                            </a>
+
+                                            <a href="/admin/grades?courseId=<%= course.id %>">
+                                                Notes du cours
+                                            </a>
+                                        <% } %>
+
+                                        <form method="POST" action="/admin/schedules/<%= schedule.id %>/delete">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button
+                                                class="cs-danger-action"
+                                                type="submit"
+                                                data-confirm="Supprimer ce creneau ?"
+                                            >
+                                                Supprimer
+                                            </button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var searchInput = document.getElementById('scheduleSearch');
+        var dayFilter = document.getElementById('scheduleDayFilter');
+        var statusFilter = document.getElementById('scheduleStatusFilter');
+        var resetButton = document.getElementById('scheduleResetFilters');
+        var activeFilters = document.getElementById('scheduleActiveFilters');
+        var rows = Array.prototype.slice.call(document.querySelectorAll('.cs-schedule-row'));
+        var visibleCount = document.getElementById('scheduleVisibleCount');
+        var tableCount = document.getElementById('scheduleTableCount');
+        var plural = document.getElementById('schedulePlural');
+        var plural2 = document.getElementById('schedulePlural2');
+
+        function valueOf(element) {
+            return element ? String(element.value || '').trim() : '';
+        }
+
+        function lower(value) {
+            return String(value || '').toLowerCase();
+        }
+
+        function renderActiveFilters(query, day, status) {
+            var html = '';
+
+            if (query) {
+                html += '<span>Recherche : <strong>' + query + '</strong></span>';
+            }
+
+            if (day) {
+                html += '<span>Jour : <strong>' + day + '</strong></span>';
+            }
+
+            if (status) {
+                html += '<span>Statut : <strong>' + status + '</strong></span>';
+            }
+
+            if (activeFilters) {
+                activeFilters.innerHTML = html;
+                activeFilters.style.display = html ? 'flex' : 'none';
+            }
+        }
+
+        function applyFilters() {
+            var query = lower(valueOf(searchInput));
+            var day = valueOf(dayFilter);
+            var status = valueOf(statusFilter);
+            var count = 0;
+
+            rows.forEach(function (row) {
+                var rowText = lower(row.getAttribute('data-search') || '');
+                var rowDay = row.getAttribute('data-day') || '';
+                var rowStatus = row.getAttribute('data-status') || '';
+                var show = true;
+
+                if (query && rowText.indexOf(query) === -1) {
+                    show = false;
+                }
+
+                if (day && rowDay !== day) {
+                    show = false;
+                }
+
+                if (status && rowStatus !== status) {
+                    show = false;
+                }
+
+                row.style.display = show ? '' : 'none';
+
+                if (show) {
+                    count += 1;
+                }
+            });
+
+            if (visibleCount) visibleCount.textContent = String(count);
+            if (tableCount) tableCount.textContent = String(count);
+            if (plural) plural.textContent = count > 1 ? 's' : '';
+            if (plural2) plural2.textContent = count > 1 ? 's' : '';
+
+            renderActiveFilters(valueOf(searchInput), day, status);
+        }
+
+        [searchInput, dayFilter, statusFilter].forEach(function (field) {
+            if (!field) return;
+
+            field.addEventListener('input', applyFilters);
+            field.addEventListener('change', applyFilters);
+        });
+
+        if (resetButton) {
+            resetButton.addEventListener('click', function () {
+                if (searchInput) searchInput.value = '';
+                if (dayFilter) dayFilter.value = '';
+                if (statusFilter) statusFilter.value = '';
+                applyFilters();
+            });
+        }
+
+        applyFilters();
+    });
+</script>
+
+<%- include('../../partials/footer') %>

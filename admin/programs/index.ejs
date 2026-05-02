@@ -1,0 +1,198 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Programmes',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var safePrograms = Array.isArray(programs) ? programs : [];
+
+    var totalPrograms = safePrograms.length;
+    var faculties = [];
+    var levels = [];
+
+    safePrograms.forEach(function(program) {
+        if (program.faculte && faculties.indexOf(program.faculte) === -1) {
+            faculties.push(program.faculte);
+        }
+
+        if (program.niveau && levels.indexOf(program.niveau) === -1) {
+            levels.push(program.niveau);
+        }
+    });
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '-';
+        }
+
+        return value;
+    }
+
+    function programName(program) {
+        return [
+            program.filiere || '',
+            program.niveau || ''
+        ].join(' ').trim() || 'Programme';
+    }
+
+    function programInitials(program) {
+        var filiere = program && program.filiere ? String(program.filiere).charAt(0) : '';
+        var niveau = program && program.niveau ? String(program.niveau).replace(/[^a-zA-Z0-9]/g, '').slice(0, 2) : '';
+
+        return (filiere + niveau).toUpperCase() || 'PR';
+    }
+
+    function countOf(program, key) {
+        if (!program || !program._count) return 0;
+        return Number(program._count[key] || 0);
+    }
+%>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Configuration académique</span>
+
+        <h1>Programmes / Filières</h1>
+
+        <p>
+            Gérez les filières, niveaux, facultés et régimes. Les programmes alimentent les classes,
+            les cours, les inscriptions et les annonces ciblées.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-primary" href="/admin/programs/new">
+            Nouveau programme
+        </a>
+    </div>
+</section>
+
+<div class="cs-list-kpi-row">
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">PR</div>
+        <div>
+            <strong><%= totalPrograms %></strong>
+            <span>Programmes</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">FA</div>
+        <div>
+            <strong><%= faculties.length %></strong>
+            <span>Facultés</span>
+        </div>
+    </article>
+
+    <article class="cs-list-kpi">
+        <div class="cs-list-kpi-icon">NV</div>
+        <div>
+            <strong><%= levels.length %></strong>
+            <span>Niveaux</span>
+        </div>
+    </article>
+</div>
+
+<section class="cs-table-card">
+    <div class="cs-table-card-head">
+        <div>
+            <h2>Liste des programmes</h2>
+            <p><%= safePrograms.length %> programme<%= safePrograms.length > 1 ? 's' : '' %> affiché<%= safePrograms.length > 1 ? 's' : '' %>.</p>
+        </div>
+
+        <span class="cs-table-count"><%= safePrograms.length %></span>
+    </div>
+
+    <% if (!safePrograms.length) { %>
+        <div class="empty-state" style="margin: 18px;">
+            <div class="empty-state-icon">∅</div>
+            <h2>Aucun programme trouvé</h2>
+            <p>Créez un programme pour structurer les classes et les cours.</p>
+        </div>
+    <% } else { %>
+        <div class="table-responsive">
+            <table class="cs-table cs-config-table">
+                <thead>
+                    <tr>
+                        <th>Programme</th>
+                        <th>Faculté</th>
+                        <th>Régime</th>
+                        <th>Classes</th>
+                        <th>Cours</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <% safePrograms.forEach(function(program) { %>
+                        <tr>
+                            <td>
+                                <div class="cs-entity-cell">
+                                    <div class="cs-entity-avatar"><%= programInitials(program) %></div>
+
+                                    <div class="cs-entity-main">
+                                        <a class="cs-entity-title cs-config-link" href="/admin/programs/<%= program.id %>/edit">
+                                            <%= programName(program) %>
+                                        </a>
+
+                                        <span class="cs-entity-subtitle">
+                                            Filière : <%= safeText(program.filiere, '-') %> · Niveau : <%= safeText(program.niveau, '-') %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="cs-cell-strong"><%= safeText(program.faculte, 'Non définie') %></div>
+                            </td>
+
+                            <td>
+                                <span class="badge badge-info">
+                                    <%= safeText(program.regime, 'Non défini') %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <a class="cs-cell-strong cs-config-link" href="/admin/classes?programId=<%= program.id %>">
+                                    <%= countOf(program, 'classes') %> classe<%= countOf(program, 'classes') > 1 ? 's' : '' %>
+                                </a>
+                            </td>
+
+                            <td>
+                                <a class="cs-cell-strong cs-config-link" href="/admin/courses?programId=<%= program.id %>">
+                                    <%= countOf(program, 'courses') %> cours
+                                </a>
+                            </td>
+
+                            <td>
+                                <details class="cs-action-dropdown">
+                                    <summary>Actions</summary>
+
+                                    <div class="cs-action-menu">
+                                        <a href="/admin/programs/<%= program.id %>/edit">Modifier</a>
+                                        <a href="/admin/classes?programId=<%= program.id %>">Voir classes</a>
+                                        <a href="/admin/courses?programId=<%= program.id %>">Voir cours</a>
+
+                                        <form method="POST" action="/admin/programs/<%= program.id %>/delete">
+                                            <%- include('../../partials/csrf') %>
+
+                                            <button
+                                                class="cs-danger-action"
+                                                type="submit"
+                                                data-confirm="Supprimer ce programme ? Cette action sera bloquée s’il est déjà utilisé."
+                                            >
+                                                Supprimer
+                                            </button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</section>
+
+<%- include('../../partials/footer') %>

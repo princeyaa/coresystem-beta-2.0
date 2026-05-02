@@ -1,0 +1,430 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Recherche globale' ,
+    session: session }) %>
+
+    <% var safeCounts=typeof counts !=='undefined' && counts ? counts : {}; var safeResults=typeof results
+        !=='undefined' && results ? results : {}; var query=typeof searchQuery !=='undefined' && searchQuery ?
+        String(searchQuery) : '' ; var hasSearch=typeof hasQuery !=='undefined' ? Boolean(hasQuery) :
+        query.trim().length> 0;
+        var currentScope = typeof activeScope !== 'undefined' && activeScope ? activeScope : 'all';
+        var safeResultLimit = typeof resultLimit !== 'undefined' && Number(resultLimit) > 0 ? Number(resultLimit) : 6;
+
+        var scopeOptionsSafe = typeof scopeOptions !== 'undefined' && Array.isArray(scopeOptions)
+        ? scopeOptions
+        : [
+        { value: 'all', label: 'Toutes les catégories' },
+        { value: 'students', label: 'Étudiants' },
+        { value: 'professors', label: 'Professeurs' },
+        { value: 'classes', label: 'Classes' },
+        { value: 'requests', label: 'Demandes' },
+        { value: 'assignments', label: 'Affectations' }
+        ];
+
+        function asArray(value) {
+        return Array.isArray(value) ? value : [];
+        }
+
+        function safeValue(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+        return fallback || '-';
+        }
+
+        return value;
+        }
+
+        function getInitials(prenom, nom, fallback) {
+        var p = prenom ? String(prenom).charAt(0) : '';
+        var n = nom ? String(nom).charAt(0) : '';
+        var initials = (p + n).toUpperCase();
+
+        return initials || fallback || 'CS';
+        }
+
+        function encodeQuery(value) {
+        return encodeURIComponent(String(value || ''));
+        }
+
+        function countOf(key, items) {
+        var raw = safeCounts && typeof safeCounts[key] !== 'undefined'
+        ? Number(safeCounts[key])
+        : items.length;
+
+        return Number.isFinite(raw) ? raw : items.length;
+        }
+
+        var students = asArray(safeResults.students);
+        var professors = asArray(safeResults.professors);
+        var classes = asArray(safeResults.classes);
+        var requests = asArray(safeResults.requests);
+        var assignments = asArray(safeResults.assignments);
+
+        var sections = [
+        {
+        key: 'students',
+        label: 'Étudiants',
+        icon: '🎓',
+        count: countOf('students', students),
+        items: students,
+        listUrl: '/admin/students?q=' + encodeQuery(query)
+        },
+        {
+        key: 'professors',
+        label: 'Professeurs',
+        icon: '👨‍🏫',
+        count: countOf('professors', professors),
+        items: professors,
+        listUrl: '/admin/professors?q=' + encodeQuery(query)
+        },
+        {
+        key: 'classes',
+        label: 'Classes',
+        icon: '🏫',
+        count: countOf('classes', classes),
+        items: classes,
+        listUrl: '/admin/classes?q=' + encodeQuery(query)
+        },
+        {
+        key: 'requests',
+        label: 'Demandes',
+        icon: '📩',
+        count: countOf('requests', requests),
+        items: requests,
+        listUrl: '/admin/requests?q=' + encodeQuery(query)
+        },
+        {
+        key: 'assignments',
+        label: 'Affectations',
+        icon: '🧩',
+        count: countOf('assignments', assignments),
+        items: assignments,
+        listUrl: '/admin/assignments?q=' + encodeQuery(query)
+        }
+        ];
+
+        var totalResults = typeof safeCounts.total !== 'undefined'
+        ? Number(safeCounts.total)
+        : sections.reduce(function (sum, section) {
+        return sum + section.count;
+        }, 0);
+
+        if (!Number.isFinite(totalResults)) {
+        totalResults = sections.reduce(function (sum, section) {
+        return sum + section.count;
+        }, 0);
+        }
+
+        function getItemUrl(type, item) {
+        if (!item || !item.id) {
+        return '#';
+        }
+
+        if (type === 'students') {
+        return '/admin/students/' + item.id;
+        }
+
+        if (type === 'professors') {
+        return '/admin/professors/' + item.id;
+        }
+
+        if (type === 'classes') {
+        return '/admin/classes/' + item.id;
+        }
+
+        if (type === 'requests') {
+        return '/admin/requests/' + item.id;
+        }
+
+        if (type === 'assignments') {
+        return '/admin/assignments?focus=' + item.id;
+        }
+
+        return '#';
+        }
+
+        function getItemTitle(type, item) {
+        if (!item) {
+        return 'Résultat';
+        }
+
+        if (type === 'students') {
+        return (safeValue(item.prenom, '') + ' ' + safeValue(item.nom, '')).trim() || 'Étudiant';
+        }
+
+        if (type === 'professors') {
+        return (safeValue(item.prenom, '') + ' ' + safeValue(item.nom, '')).trim() || 'Professeur';
+        }
+
+        if (type === 'classes') {
+        return safeValue(item.nom, item.code || 'Classe');
+        }
+
+        if (type === 'requests') {
+        var studentName = item.student
+        ? (safeValue(item.student.prenom, '') + ' ' + safeValue(item.student.nom, '')).trim()
+        : 'Étudiant';
+
+        return helpers.formatEnumLabel(item.typeDemande) + ' — ' + studentName;
+        }
+
+        if (type === 'assignments') {
+        var profName = item.professor
+        ? (safeValue(item.professor.prenom, '') + ' ' + safeValue(item.professor.nom, '')).trim()
+        : 'Professeur';
+
+        var courseName = item.course
+        ? safeValue(item.course.code, '') + ' - ' + safeValue(item.course.nom, '')
+        : 'Cours';
+
+        return profName + ' — ' + courseName;
+        }
+
+        return 'Résultat';
+        }
+
+        function getItemSubtitle(type, item) {
+        var parts = [];
+
+        if (!item) {
+        return '';
+        }
+
+        if (type === 'students') {
+        if (item.matricule) {
+        parts.push('Matricule : ' + item.matricule);
+        }
+
+        if (item.email) {
+        parts.push('Email : ' + item.email);
+        }
+
+        if (item.enrollments && item.enrollments.length && item.enrollments[0].class) {
+        parts.push('Classe : ' + item.enrollments[0].class.nom);
+
+        if (item.enrollments[0].class.campus) {
+        parts.push('Campus : ' + item.enrollments[0].class.campus.nom);
+        }
+        }
+
+        return parts.join(' • ') || 'Informations étudiant';
+        }
+
+        if (type === 'professors') {
+        if (item.email) {
+        parts.push('Email : ' + item.email);
+        }
+
+        if (item.campus) {
+        parts.push('Campus : ' + item.campus.nom);
+        }
+
+        if (item.department) {
+        parts.push('Département : ' + item.department.nom);
+        }
+
+        return parts.join(' • ') || 'Informations professeur';
+        }
+
+        if (type === 'classes') {
+        if (item.code) {
+        parts.push('Code : ' + item.code);
+        }
+
+        if (item.academicYear) {
+        parts.push('Année : ' + item.academicYear);
+        }
+
+        if (item.campus) {
+        parts.push('Campus : ' + item.campus.nom);
+        }
+
+        if (item.department) {
+        parts.push('Département : ' + item.department.nom);
+        }
+
+        if (item.program) {
+        parts.push('Programme : ' + item.program.filiere + ' ' + item.program.niveau);
+        }
+
+        return parts.join(' • ') || 'Informations classe';
+        }
+
+        if (type === 'requests') {
+        if (item.statut) {
+        parts.push('Statut : ' + helpers.formatEnumLabel(item.statut));
+        }
+
+        if (item.createdAt) {
+        parts.push('Créée le : ' + helpers.formatDateTime(item.createdAt));
+        }
+
+        if (item.treatedBy) {
+        parts.push('Traitée par : ' + item.treatedBy.prenom + ' ' + item.treatedBy.nom);
+        }
+
+        return parts.join(' • ') || 'Demande administrative';
+        }
+
+        if (type === 'assignments') {
+        if (item.academicYear) {
+        parts.push('Année : ' + item.academicYear);
+        }
+
+        if (item.class) {
+        parts.push('Classe : ' + item.class.nom);
+        }
+
+        if (item.class && item.class.campus) {
+        parts.push('Campus : ' + item.class.campus.nom);
+        }
+
+        if (item.course && item.course.program) {
+        parts.push('Programme : ' + item.course.program.filiere + ' ' + item.course.program.niveau);
+        }
+
+        return parts.join(' • ') || 'Affectation pédagogique';
+        }
+
+        return '';
+        }
+
+        function getItemInitial(type, item) {
+        if (type === 'students') {
+        return getInitials(item.prenom, item.nom, 'ET');
+        }
+
+        if (type === 'professors') {
+        return getInitials(item.prenom, item.nom, 'PR');
+        }
+
+        if (type === 'classes') {
+        return 'CL';
+        }
+
+        if (type === 'requests') {
+        return 'DM';
+        }
+
+        if (type === 'assignments') {
+        return 'AF';
+        }
+
+        return 'CS';
+        }
+        %>
+
+        <div class="cs-back-line">
+            <a class="cs-back-link" href="/admin/dashboard">← Retour au dashboard</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Recherche globale admin</h1>
+                <p class="page-subtitle">
+                    Recherchez un étudiant, un professeur, une classe, une demande ou une affectation.
+                </p>
+            </div>
+        </div>
+
+        <div class="card detail-section">
+            <form class="cs-search-form" method="GET" action="/admin/search">
+                <div class="form-group">
+                    <label for="q">Recherche</label>
+                    <input id="q" name="q" type="text" value="<%= query %>"
+                        placeholder="Nom, matricule, email, classe, cours..." autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label for="scope">Catégorie</label>
+                    <select id="scope" name="scope">
+                        <% scopeOptionsSafe.forEach(function(option) { %>
+                            <option value="<%= option.value %>" <%=option.value===currentScope ? 'selected' : '' %>>
+                                <%= option.label %>
+                            </option>
+                            <% }); %>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" type="submit">Rechercher</button>
+            </form>
+        </div>
+
+        <% if (!hasSearch) { %>
+            <div class="empty-state">
+                <div class="empty-state-icon">🔎</div>
+                <h2>Lancez une recherche</h2>
+                <p>Saisissez un nom, un matricule, un email, une classe, un cours ou une demande.</p>
+            </div>
+            <% } else if (totalResults===0) { %>
+                <div class="empty-state">
+                    <div class="empty-state-icon">∅</div>
+                    <h2>Aucun résultat trouvé</h2>
+                    <p>Aucun élément ne correspond à “<strong>
+                            <%= query %>
+                        </strong>”.</p>
+                </div>
+                <% } else { %>
+                    <div class="section-heading">
+                        <div>
+                            <h2>Résultats trouvés</h2>
+                            <p>
+                                <%= totalResults %> résultat(s) pour “<strong>
+                                        <%= query %>
+                                    </strong>”.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cs-result-grid">
+                        <% sections.forEach(function(section) { %>
+                            <% if (currentScope==='all' || currentScope===section.key) { %>
+                                <section class="cs-result-section">
+                                    <div class="cs-result-section-head">
+                                        <h2>
+                                            <%= section.icon %>
+                                                <%= section.label %>
+                                        </h2>
+                                        <span class="cs-result-count">
+                                            <%= section.count %>
+                                        </span>
+                                    </div>
+
+                                    <% if (!section.items.length) { %>
+                                        <div class="empty-state" style="padding: 18px;">
+                                            Aucun résultat dans cette catégorie.
+                                        </div>
+                                        <% } else { %>
+                                            <div class="cs-result-list">
+                                                <% section.items.slice(0, safeResultLimit).forEach(function(item) { %>
+                                                    <a class="cs-result-card"
+                                                        href="<%= getItemUrl(section.key, item) %>">
+                                                        <div class="cs-result-avatar">
+                                                            <%= getItemInitial(section.key, item) %>
+                                                        </div>
+
+                                                        <div class="cs-result-main">
+                                                            <strong class="cs-text-ellipsis">
+                                                                <%= getItemTitle(section.key, item) %>
+                                                            </strong>
+
+                                                            <span class="cs-text-safe">
+                                                                <%= getItemSubtitle(section.key, item) %>
+                                                            </span>
+                                                        </div>
+
+                                                        <div class="cs-result-arrow">→</div>
+                                                    </a>
+                                                    <% }); %>
+                                            </div>
+
+                                            <% if (section.count> safeResultLimit) { %>
+                                                <a class="cs-result-more" href="<%= section.listUrl %>">
+                                                    Voir plus dans <%= section.label.toLowerCase() %> →
+                                                </a>
+                                                <% } %>
+                                                    <% } %>
+                                </section>
+                                <% } %>
+                                    <% }); %>
+                    </div>
+                    <% } %>
+
+                        <%- include('../../partials/footer') %>

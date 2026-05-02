@@ -1,0 +1,33 @@
+<% if (traceMeta) { %>
+    <aside class="cs-trace-meta" aria-label="Dernière action tracée">
+        <div class="cs-trace-meta-icon">↺</div>
+
+        <div class="cs-trace-meta-body">
+            <div class="cs-trace-meta-title">
+                <%= traceMeta.label || 'Dernière action' %>
+            </div>
+
+            <div class="cs-trace-meta-summary">
+                <%= traceMeta.summary || '-' %>
+            </div>
+
+            <div class="cs-trace-meta-foot">
+                <span>
+                    <%= traceMeta.actorName || 'Système' %>
+                </span>
+
+                <% if (traceMeta.actorRole) { %>
+                    <span>
+                        <%= helpers.formatEnumLabel(traceMeta.actorRole) %>
+                    </span>
+                    <% } %>
+
+                        <% if (traceMeta.createdAt) { %>
+                            <span>
+                                <%= helpers.formatDateTime(traceMeta.createdAt) %>
+                            </span>
+                            <% } %>
+            </div>
+        </div>
+    </aside>
+    <% } %>

@@ -1,0 +1,473 @@
+<%- include('../../partials/header', { title: typeof pageTitle !=='undefined' ? pageTitle : 'Affectations' , session:
+    typeof session !=='undefined' ? session : null }) %>
+
+    <% var safeAssignments=Array.isArray(assignments) ? assignments : []; var query=typeof searchQuery !=='undefined' ?
+        String(searchQuery || '' ) : '' ; var safeFilters=typeof filters !=='undefined' && filters ? filters : {}; var
+        safeOptions=typeof filterOptions !=='undefined' && filterOptions ? filterOptions : {}; var
+        safeAcademicYears=Array.isArray(safeOptions.academicYears) ? safeOptions.academicYears : []; var
+        safeCampuses=Array.isArray(safeOptions.campuses) ? safeOptions.campuses : []; var
+        safeDepartments=Array.isArray(safeOptions.departments) ? safeOptions.departments : []; var
+        safePrograms=Array.isArray(safeOptions.programs) ? safeOptions.programs : []; var
+        safeProfessors=Array.isArray(safeOptions.professors) ? safeOptions.professors : []; var
+        safeCourses=Array.isArray(safeOptions.courses) ? safeOptions.courses : []; var
+        safeClasses=Array.isArray(safeOptions.classes) ? safeOptions.classes : []; var canFilterCampus=typeof
+        isSuperAdmin !=='undefined' ? Boolean(isSuperAdmin) : false; var showReset=typeof hasActiveFilters
+        !=='undefined' ? Boolean(hasActiveFilters) : Boolean(query); var professorIds=new Set(); var classIds=new Set();
+        var courseIds=new Set(); var totalStudentsConcerned=0; safeAssignments.forEach(function(assignment) { if
+        (assignment.professorId) professorIds.add(assignment.professorId); if (assignment.classId)
+        classIds.add(assignment.classId); if (assignment.courseId) courseIds.add(assignment.courseId); if
+        (assignment.class && Array.isArray(assignment.class.enrollments)) { totalStudentsConcerned
+        +=assignment.class.enrollments.length; } }); function safeText(value, fallback) { if (value===null || typeof
+        value==='undefined' || value==='' ) { return fallback || '-' ; } return value; } function selected(value,
+        expected) { return String(value || '' )===String(expected || '' ) ? 'selected' : '' ; } function
+        hasFilterValue(value) { return value !==null && typeof value !=='undefined' && String(value) !=='' ; } function
+        initialsOfAssignment(assignment) { if (!assignment || !assignment.professor) { return 'AF' ; } var
+        p=assignment.professor.prenom ? String(assignment.professor.prenom).charAt(0) : '' ; var
+        n=assignment.professor.nom ? String(assignment.professor.nom).charAt(0) : '' ; return (p + n).toUpperCase()
+        || 'AF' ; } %>
+
+        <section class="cs-admin-list-hero">
+            <div>
+                <span class="page-kicker">Module administration</span>
+                <h1>Affectations</h1>
+                <p>
+                    Reliez les professeurs, les cours, les classes et l’année universitaire.
+                    Ce module structure le travail pédagogique et la saisie des notes.
+                </p>
+            </div>
+
+            <div class="cs-admin-list-actions">
+                <a class="btn btn-primary" href="/admin/assignments/new">
+                    Nouvelle affectation
+                </a>
+            </div>
+        </section>
+
+        <div class="cs-list-kpi-row">
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">🧩</div>
+                <div>
+                    <strong>
+                        <%= safeAssignments.length %>
+                    </strong>
+                    <span>Affectations affichées</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">👨‍🏫</div>
+                <div>
+                    <strong>
+                        <%= professorIds.size %>
+                    </strong>
+                    <span>Professeurs concernés</span>
+                </div>
+            </article>
+
+            <article class="cs-list-kpi">
+                <div class="cs-list-kpi-icon">🏫</div>
+                <div>
+                    <strong>
+                        <%= classIds.size %>
+                    </strong>
+                    <span>Classes concernées</span>
+                </div>
+            </article>
+        </div>
+
+        <section class="cs-filter-panel">
+            <div class="cs-filter-panel-head">
+                <div>
+                    <h2>Recherche et filtres</h2>
+                    <p>
+                        Retrouvez une affectation par professeur, cours, classe, année, campus, département ou
+                        programme.
+                    </p>
+                </div>
+
+                <% if (showReset) { %>
+                    <a class="cs-filter-reset" href="/admin/assignments">
+                        Réinitialiser
+                    </a>
+                    <% } %>
+            </div>
+
+            <form class="cs-assignment-filter-form cs-student-filter-form" method="GET" action="/admin/assignments">
+                <div class="cs-filter-field cs-filter-field-wide">
+                    <label for="q">Recherche</label>
+                    <input id="q" name="q" type="text" value="<%= query %>"
+                        placeholder="Professeur, email, cours, classe, année, campus..." autocomplete="off">
+                </div>
+
+                <div class="cs-filter-field">
+                    <label for="academicYear">Année universitaire</label>
+                    <select id="academicYear" name="academicYear">
+                        <option value="">Toutes les années</option>
+
+                        <% safeAcademicYears.forEach(function(year) { %>
+                            <option value="<%= year %>" <%=selected(safeFilters.academicYear, year) %>>
+                                <%= year %>
+                            </option>
+                            <% }) %>
+                    </select>
+                </div>
+
+                <% if (canFilterCampus) { %>
+                    <div class="cs-filter-field">
+                        <label for="campusId">Campus</label>
+                        <select id="campusId" name="campusId">
+                            <option value="">Tous les campus</option>
+
+                            <% safeCampuses.forEach(function(campus) { %>
+                                <option value="<%= campus.id %>" <%=selected(safeFilters.campusId, campus.id) %>>
+                                    <%= campus.nom %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <% } %>
+
+                        <div class="cs-filter-field">
+                            <label for="departmentId">Département</label>
+                            <select id="departmentId" name="departmentId">
+                                <option value="">Tous les départements</option>
+
+                                <% safeDepartments.forEach(function(department) { %>
+                                    <option value="<%= department.id %>" <%=selected(safeFilters.departmentId,
+                                        department.id) %>>
+                                        <%= department.nom %>
+                                            <% if (department.campus && canFilterCampus) { %>
+                                                — <%= department.campus.nom %>
+                                                    <% } %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="programId">Programme</label>
+                            <select id="programId" name="programId">
+                                <option value="">Tous les programmes</option>
+
+                                <% safePrograms.forEach(function(program) { %>
+                                    <option value="<%= program.id %>" <%=selected(safeFilters.programId, program.id) %>>
+                                        <%= program.filiere %>
+                                            <%= program.niveau %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="professorId">Professeur</label>
+                            <select id="professorId" name="professorId">
+                                <option value="">Tous les professeurs</option>
+
+                                <% safeProfessors.forEach(function(professor) { %>
+                                    <option value="<%= professor.id %>" <%=selected(safeFilters.professorId,
+                                        professor.id) %>>
+                                        <%= professor.prenom %>
+                                            <%= professor.nom %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="courseId">Cours</label>
+                            <select id="courseId" name="courseId">
+                                <option value="">Tous les cours</option>
+
+                                <% safeCourses.forEach(function(course) { %>
+                                    <option value="<%= course.id %>" <%=selected(safeFilters.courseId, course.id) %>>
+                                        <%= course.code %> — <%= course.nom %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-field">
+                            <label for="classId">Classe</label>
+                            <select id="classId" name="classId">
+                                <option value="">Toutes les classes</option>
+
+                                <% safeClasses.forEach(function(academicClass) { %>
+                                    <option value="<%= academicClass.id %>" <%=selected(safeFilters.classId,
+                                        academicClass.id) %>>
+                                        <%= academicClass.nom %>
+                                            <% if (academicClass.academicYear) { %>
+                                                — <%= academicClass.academicYear %>
+                                                    <% } %>
+                                                        <% if (academicClass.campus && canFilterCampus) { %>
+                                                            — <%= academicClass.campus.nom %>
+                                                                <% } %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="cs-filter-actions">
+                            <button class="btn btn-primary" type="submit">
+                                Appliquer les filtres
+                            </button>
+
+                            <% if (showReset) { %>
+                                <a class="btn btn-secondary" href="/admin/assignments">
+                                    Tout réinitialiser
+                                </a>
+                                <% } %>
+                        </div>
+            </form>
+
+            <% if (showReset) { %>
+                <div class="cs-active-filter-list">
+                    <% if (query) { %>
+                        <span>Recherche : <strong>
+                                <%= query %>
+                            </strong></span>
+                        <% } %>
+
+                            <% if (hasFilterValue(safeFilters.academicYear)) { %>
+                                <span>Année : <strong>
+                                        <%= safeFilters.academicYear %>
+                                    </strong></span>
+                                <% } %>
+
+                                    <% if (canFilterCampus && hasFilterValue(safeFilters.campusId)) { %>
+                                        <span>Campus filtré</span>
+                                        <% } %>
+
+                                            <% if (hasFilterValue(safeFilters.departmentId)) { %>
+                                                <span>Département filtré</span>
+                                                <% } %>
+
+                                                    <% if (hasFilterValue(safeFilters.programId)) { %>
+                                                        <span>Programme filtré</span>
+                                                        <% } %>
+
+                                                            <% if (hasFilterValue(safeFilters.professorId)) { %>
+                                                                <span>Professeur filtré</span>
+                                                                <% } %>
+
+                                                                    <% if (hasFilterValue(safeFilters.courseId)) { %>
+                                                                        <span>Cours filtré</span>
+                                                                        <% } %>
+
+                                                                            <% if (hasFilterValue(safeFilters.classId))
+                                                                                { %>
+                                                                                <span>Classe filtrée</span>
+                                                                                <% } %>
+                </div>
+                <% } %>
+        </section>
+
+        <section class="cs-table-card">
+            <div class="cs-table-card-head">
+                <div>
+                    <h2>Liste des affectations</h2>
+                    <p>
+                        <%= safeAssignments.length %> résultat<%= safeAssignments.length> 1 ? 's' : '' %>
+                                <% if (query) { %>
+                                    pour “<strong>
+                                        <%= query %>
+                                    </strong>”
+                                    <% } %>
+                    </p>
+                </div>
+
+                <span class="cs-table-count">
+                    <%= safeAssignments.length %>
+                </span>
+            </div>
+
+            <% if (!safeAssignments.length) { %>
+                <div class="empty-state" style="margin: 18px;">
+                    <div class="empty-state-icon">∅</div>
+                    <h2>Aucune affectation trouvée</h2>
+                    <p>Aucune affectation ne correspond à cette recherche ou à ces filtres dans votre périmètre.</p>
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="cs-table cs-assignments-table">
+                            <thead>
+                                <tr>
+                                    <th>Affectation</th>
+                                    <th>Cours</th>
+                                    <th>Classe</th>
+                                    <th>Programme</th>
+                                    <th>Campus</th>
+                                    <th>Trace</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% safeAssignments.forEach(function(assignment) { var traceMeta=assignmentTraceMap &&
+                                    assignmentTraceMap[assignment.id] ? assignmentTraceMap[assignment.id] : null; var
+                                    studentsCount=assignment.class && Array.isArray(assignment.class.enrollments) ?
+                                    assignment.class.enrollments.length : 0; %>
+                                    <tr>
+                                        <td>
+                                            <div class="cs-entity-cell">
+                                                <div class="cs-entity-avatar">
+                                                    <%= initialsOfAssignment(assignment) %>
+                                                </div>
+
+                                                <div class="cs-entity-main">
+                                                    <% if (assignment.professor) { %>
+                                                        <a class="cs-entity-title"
+                                                            href="/admin/professors/<%= assignment.professor.id %>">
+                                                            <%= safeText(assignment.professor.prenom, '' ) %>
+                                                                <%= safeText(assignment.professor.nom, '' ) %>
+                                                        </a>
+
+                                                        <span class="cs-entity-subtitle">
+                                                            <%= safeText(assignment.professor.email, 'Email non défini'
+                                                                ) %>
+                                                        </span>
+                                                        <% } else { %>
+                                                            <span class="cs-entity-title">Professeur non défini</span>
+                                                            <% } %>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (assignment.course) { %>
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(assignment.course.code, '-' ) %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    <%= safeText(assignment.course.nom, '-' ) %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Cours non défini</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (assignment.class) { %>
+                                                <a class="cs-cell-strong cs-class-title-link"
+                                                    href="/admin/classes/<%= assignment.class.id %>">
+                                                    <%= safeText(assignment.class.nom, '-' ) %>
+                                                </a>
+
+                                                <div class="cs-cell-muted">
+                                                    <%= safeText(assignment.class.academicYear ||
+                                                        assignment.academicYear, '-' ) %>
+                                                        • <%= studentsCount %> étudiant<%= studentsCount> 1 ? 's' : ''
+                                                                %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="badge badge-warning">Sans classe</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (assignment.course && assignment.course.program) { %>
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(assignment.course.program.filiere, '-' ) %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    Niveau : <%= safeText(assignment.course.program.niveau, '-' ) %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Programme non défini</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (assignment.class && assignment.class.campus) { %>
+                                                <div class="cs-cell-strong">
+                                                    <%= safeText(assignment.class.campus.nom, '-' ) %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    <%= assignment.class.department ?
+                                                        safeText(assignment.class.department.nom, '-' )
+                                                        : 'Département non défini' %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Campus non défini</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (traceMeta) { %>
+                                                <div class="cs-cell-strong cs-text-safe">
+                                                    <%= traceMeta.summary || 'Action enregistrée' %>
+                                                </div>
+
+                                                <div class="cs-cell-muted">
+                                                    <%= traceMeta.actorName || 'Système' %>
+                                                        <% if (traceMeta.createdAt) { %>
+                                                            • <%= helpers.formatDateTime(traceMeta.createdAt) %>
+                                                                <% } %>
+                                                </div>
+                                                <% } else { %>
+                                                    <span class="cs-cell-muted">Aucune trace récente</span>
+                                                    <% } %>
+                                        </td>
+
+                                        <td>
+                                            <details class="cs-action-dropdown">
+                                                <summary>Actions</summary>
+
+                                                <div class="cs-action-menu">
+                                                    <a href="/admin/assignments/<%= assignment.id %>/edit">
+                                                        Modifier
+                                                    </a>
+
+                                                    <% if (assignment.professor) { %>
+                                                        <a href="/admin/professors/<%= assignment.professor.id %>">
+                                                            Voir le professeur
+                                                        </a>
+                                                        <% } %>
+
+                                                            <% if (assignment.class) { %>
+                                                                <a href="/admin/classes/<%= assignment.class.id %>">
+                                                                    Voir la classe
+                                                                </a>
+
+                                                                <a
+                                                                    href="/admin/students?classId=<%= assignment.class.id %>">
+                                                                    Voir les étudiants
+                                                                </a>
+
+                                                                <a
+                                                                    href="/admin/grades?classId=<%= assignment.class.id %>">
+                                                                    Voir les notes
+                                                                </a>
+                                                                <% } %>
+
+                                                                    <% if (assignment.course) { %>
+                                                                        <a
+                                                                            href="/admin/grades?courseId=<%= assignment.course.id %>">
+                                                                            Notes de ce cours
+                                                                        </a>
+                                                                        <% } %>
+
+                                                                            <form method="POST"
+                                                                                action="/admin/assignments/<%= assignment.id %>/delete">
+                                                                                <%- include('../../partials/csrf') %>
+
+                                                                                    <button class="cs-danger-action"
+                                                                                        type="submit"
+                                                                                        data-confirm="Supprimer cette affectation ? Cette action retirera le lien professeur-cours-classe pour cette année.">
+                                                                                        Supprimer
+                                                                                    </button>
+                                                                            </form>
+                                                </div>
+                                            </details>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </section>
+
+        <%- include('../../partials/footer') %>

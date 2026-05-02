@@ -1,0 +1,13 @@
+<% const safeFallbackHref=typeof fallbackHref !=='undefined' && fallbackHref ? fallbackHref : '/admin/dashboard' ; const
+    safeLabel=typeof label !=='undefined' && label ? label : 'Retour' ; %>
+
+    <div class="cs-back-line">
+        <a class="cs-back-link" href="<%= safeFallbackHref %>" onclick="
+            if (document.referrer && document.referrer.includes(window.location.host)) {
+                event.preventDefault();
+                window.history.back();
+            }
+        ">
+            ← <%= safeLabel %>
+        </a>
+    </div>

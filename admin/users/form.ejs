@@ -1,0 +1,171 @@
+<%- include('../../partials/header', {
+    title: typeof pageTitle !== 'undefined' ? pageTitle : 'Utilisateur administratif',
+    session: typeof session !== 'undefined' ? session : null
+}) %>
+
+<%
+    var u = typeof adminUser !== 'undefined' && adminUser ? adminUser : {};
+    var safeRoles = Array.isArray(roles) ? roles : ['SUPER_ADMIN', 'ADMIN_CAMPUS'];
+    var safeCampuses = Array.isArray(campuses) ? campuses : [];
+    var isEdit = Boolean(u && u.id);
+    var backUrl = '/admin/users';
+
+    function safeText(value, fallback) {
+        if (value === null || typeof value === 'undefined' || value === '') {
+            return fallback || '';
+        }
+
+        return value;
+    }
+
+    function selected(value, expected) {
+        return String(value || '') === String(expected || '') ? 'selected' : '';
+    }
+
+    function enumLabel(value) {
+        if (typeof helpers !== 'undefined' && helpers && helpers.formatEnumLabel) {
+            return helpers.formatEnumLabel(value);
+        }
+
+        return safeText(value, '-');
+    }
+%>
+
+<div class="cs-back-row">
+    <a class="cs-back-link" href="<%= backUrl %>">
+        &larr; Retour aux utilisateurs
+    </a>
+</div>
+
+<section class="cs-admin-list-hero">
+    <div>
+        <span class="page-kicker">Administration système</span>
+
+        <h1><%= pageTitle || (isEdit ? 'Modifier l’utilisateur' : 'Nouvel utilisateur administratif') %></h1>
+
+        <p>
+            Créez un compte admin avec l’un des deux rôles officiels :
+            SUPER_ADMIN ou ADMIN_CAMPUS.
+        </p>
+    </div>
+
+    <div class="cs-admin-list-actions">
+        <a class="btn btn-secondary" href="/admin/users">
+            Liste utilisateurs
+        </a>
+    </div>
+</section>
+
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<form class="cs-config-form" method="POST" action="<%= formAction %>">
+    <%- include('../../partials/csrf') %>
+
+    <section class="cs-form-layout">
+        <div class="cs-form-main">
+            <article class="cs-form-card">
+                <div class="cs-form-card-head">
+                    <div>
+                        <h2>Identité du compte</h2>
+                        <p>Nom, prénom, email et rôle administratif.</p>
+                    </div>
+                </div>
+
+                <div class="cs-form-grid cs-form-grid-2">
+                    <div class="cs-form-field">
+                        <label for="prenom">Prénom *</label>
+                        <input id="prenom" name="prenom" type="text" value="<%= safeText(u.prenom, '') %>" required>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="nom">Nom *</label>
+                        <input id="nom" name="nom" type="text" value="<%= safeText(u.nom, '') %>" required>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="email">Email *</label>
+                        <input id="email" name="email" type="email" value="<%= safeText(u.email, '') %>" required>
+                    </div>
+
+                    <div class="cs-form-field">
+                        <label for="role">Rôle *</label>
+                        <select id="role" name="role" required>
+                            <% safeRoles.forEach(function(role) { %>
+                                <option value="<%= role %>" <%= selected(u.role || 'ADMIN_CAMPUS', role) %>>
+                                    <%= enumLabel(role) %>
+                                </option>
+                            <% }) %>
+                        </select>
+
+                        <p>Ne pas réintroduire SCOLARITE, RESPONSABLE_ACADEMIQUE ou DECIDEUR.</p>
+                    </div>
+
+                    <div class="cs-form-field cs-config-wide-field">
+                        <label for="campusId">Campus</label>
+                        <select id="campusId" name="campusId">
+                            <option value="">Aucun / Global</option>
+
+                            <% safeCampuses.forEach(function(campus) { %>
+                                <option value="<%= campus.id %>" <%= selected(u.campusId, campus.id) %>>
+                                    <%= campus.nom %>
+                                </option>
+                            <% }) %>
+                        </select>
+
+                        <p>Obligatoire pour ADMIN_CAMPUS. À laisser vide pour SUPER_ADMIN.</p>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="cs-form-side">
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">AD</div>
+                <h2>Compte admin</h2>
+                <p>À la création, le serveur génère un mot de passe temporaire et l’affiche dans un message flash.</p>
+            </article>
+
+            <article class="cs-form-help-card">
+                <div class="cs-form-help-icon">RL</div>
+                <h2>Rôles officiels</h2>
+                <p>SUPER_ADMIN a une vision globale. ADMIN_CAMPUS est limité à son campus.</p>
+            </article>
+
+            <article class="cs-form-actions-card">
+                <button class="btn btn-primary" type="submit">
+                    <%= submitLabel || (isEdit ? 'Enregistrer' : 'Créer le compte') %>
+                </button>
+
+                <a class="btn btn-secondary" href="<%= backUrl %>">Annuler</a>
+            </article>
+        </aside>
+    </section>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var roleSelect = document.getElementById('role');
+        var campusSelect = document.getElementById('campusId');
+
+        function syncCampusRequirement() {
+            if (!roleSelect || !campusSelect) return;
+
+            if (roleSelect.value === 'ADMIN_CAMPUS') {
+                campusSelect.setAttribute('required', 'required');
+            } else {
+                campusSelect.removeAttribute('required');
+                campusSelect.value = '';
+            }
+        }
+
+        if (roleSelect) {
+            roleSelect.addEventListener('change', syncCampusRequirement);
+        }
+
+        syncCampusRequirement();
+    });
+</script>
+
+<%- include('../../partials/footer') %>
